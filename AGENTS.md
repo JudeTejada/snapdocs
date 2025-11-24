@@ -57,6 +57,7 @@ npm run lint:fix      # Fix linting issues
 - **Frontend**: Next.js App Router, React hooks, server/client components
 - Use Prisma for database (backend/src/prisma/)
 - Environment variables in .env files (.env.example provided)
+- **Always use NestJS ConfigService for environment variables** - inject ConfigService and use `configService.get()` instead of `process.env`
 
 ### Development Workflow
 1. Use `pnpm dev` for full-stack development

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Headers, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ClerkService } from './clerk.service';
 import { ClerkAuthGuard } from './guards/clerk-auth.guard';
 import { GetClerkUser } from './decorators/get-clerk-user.decorator';

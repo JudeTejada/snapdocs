@@ -1,31 +1,30 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable, UnauthorizedException, ExecutionContext, CanActivate } from '@nestjs/common';
 import { ClerkService } from '../clerk.service';
 
 @Injectable()
-export class ClerkAuthGuard extends AuthGuard('jwt') {
-  constructor(private clerkService: ClerkService) {
-    super();
-  }
+export class ClerkAuthGuard implements CanActivate {
+  constructor(private clerkService: ClerkService) {}
 
-  async canActivate(context: any) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 
-    if (!authHeader) {
-      throw new UnauthorizedException('No authorization header');
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new UnauthorizedException('No authorization header provided');
     }
 
     try {
-      const user = await this.clerkService.getUserFromAuthHeader(authHeader);
+      const token = authHeader.substring(7);
+      const user = await this.clerkService.verifyAuthToken(token);
+      
       if (user) {
         request.user = user;
         return true;
       }
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException(`Authentication failed: ${error.message}`);
     }
 
-    return false;
+    throw new UnauthorizedException('Authentication failed');
   }
 }
