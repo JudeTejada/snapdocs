@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { ClerkProvider } from '@clerk/nextjs'
 
 export const metadata: Metadata = {
   title: 'SnapDocs',
@@ -12,12 +13,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>
-        <main>
-          {children}
-        </main>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <main>
+            {children}
+          </main>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -13,22 +14,87 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   email     String   @unique
-  name      String?
+  clerkId   String?  @unique
+  githubId  String?
+  tokens    Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  repos    Repo[]
 
   @@map("users")
 }
 
-model Document {
-  id        String   @id @default(uuid())
-  title     String
-  content   String?
-  fileUrl   String?
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Repo {
+  id        String   @id @default(cuid())
+  name      String
+  owner     String
+  provider  String   @default("github")
+  installId String
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("documents")
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prs  PullRequest[]
+
+  @@unique([owner, name])
+  @@map("repos")
+}
+
+model PullRequest {
+  id        String   @id @default(cuid())
+  repoId    String
+  number    Int
+  title     String
+  author    String
+  mergedAt  DateTime
+  state     String   @default("closed")
+  sha       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repo Repo           @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  docs Documentation?
+
+  @@unique([repoId, number])
+  @@map("pull_requests")
+}
+
+model Documentation {
+  id          String   @id @default(cuid())
+  prId        String   @unique
+  summary     String
+  snippets    String?
+  changelog   String?
+  json        Json?
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pr PullRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@map("documentation")
 }
