@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AuthButton from '@/components/AuthButton';
 import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
   const [healthStatus, setHealthStatus] = useState<any>(null);
@@ -25,134 +27,61 @@ export default function Home() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}
-    >
+    <div className="min-h-screen bg-background font-sans">
       {/* Header */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '1rem 2rem',
-          borderBottom: '1px solid #e9ecef'
-        }}
-      >
-        <h1
-          style={{
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}
-        >
+      <header className="flex items-center justify-between px-8 py-6 border-b border-border">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
           SnapDocs
         </h1>
         <AuthButton />
       </header>
 
       {/* Hero Section */}
-      <main
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '80vh',
-          padding: '20px',
-          textAlign: 'center'
-        }}
-      >
-        <h1
-          style={{
-            fontSize: '3.5rem',
-            fontWeight: 'bold',
-            marginBottom: '1rem',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}
-        >
-          SnapDocs
-        </h1>
+      <main className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
+        <div className="max-w-3xl space-y-8">
+          <h1 className="text-6xl font-bold tracking-tighter text-foreground sm:text-7xl">
+            Documentation, <br />
+            <span className="text-zinc-500">Auto-generated.</span>
+          </h1>
 
-        <p
-          style={{
-            fontSize: '1.4rem',
-            color: '#666',
-            marginBottom: '1rem',
-            maxWidth: '600px'
-          }}
-        >
-          Auto-generate documentation for your GitHub PRs with AI
-        </p>
-
-        <p
-          style={{
-            fontSize: '1.1rem',
-            color: '#888',
-            marginBottom: '3rem',
-            maxWidth: '500px'
-          }}
-        >
-          Transform merged pull requests into comprehensive documentation,
-          changelogs, and code summaries
-        </p>
-
-        <SignedIn>
-          <Link href='/dashboard'>
-            <button
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1.1rem',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                display: 'inline-block'
-              }}
-            >
-              Go to Dashboard
-            </button>
-          </Link>
-        </SignedIn>
-
-        <SignedOut>
-          <p style={{ color: '#666', marginBottom: '2rem' }}>
-            Sign in to get started with SnapDocs
+          <p className="text-xl text-muted-foreground max-w-[600px] mx-auto leading-relaxed">
+            Transform merged pull requests into comprehensive documentation, 
+            changelogs, and code summaries with zero manual effort.
           </p>
-        </SignedOut>
 
-        {/* Status Section */}
-        <div
-          style={{
-            marginTop: '3rem',
-            background: '#f8f9fa',
-            padding: '2rem',
-            borderRadius: '12px',
-            border: '1px solid #e9ecef',
-            minWidth: '300px',
-            maxWidth: '500px'
-          }}
-        >
-          {healthStatus && (
-            <div style={{ fontSize: '0.9rem', color: '#666' }}>
-              <p>Status: {healthStatus.data.status}</p>
-              <p>Uptime: {Math.round(healthStatus.data.uptime)}s</p>
-              <p>
-                Time:{' '}
-                {new Date(healthStatus.data.timestamp).toLocaleTimeString()}
-              </p>
-            </div>
-          )}
+          <div className="flex justify-center gap-4 pt-4">
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button size="lg" className="h-12 px-8 text-base">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </SignedIn>
+            <SignedOut>
+               {/* Sign In is handled by AuthButton in header, or we can add a dedicated CTA here */}
+               <div className="text-muted-foreground text-sm">
+                 Sign in above to get started
+               </div>
+            </SignedOut>
+          </div>
+
+          {/* Status Section */}
+          <div className="pt-16">
+             {healthStatus && (
+                <Card className="w-full max-w-md mx-auto bg-zinc-50/50">
+                  <CardContent className="pt-6 text-sm text-muted-foreground space-y-2">
+                     <div className="flex justify-between">
+                        <span>System Status</span>
+                        <span className="font-medium text-foreground">{healthStatus.data.status}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span>Uptime</span>
+                        <span className="font-mono">{Math.round(healthStatus.data.uptime)}s</span>
+                     </div>
+                  </CardContent>
+                </Card>
+             )}
+          </div>
         </div>
       </main>
     </div>

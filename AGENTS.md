@@ -1,5 +1,7 @@
 # Agent Guidelines for SnapDocs
 
+# When installing a package for both frontend and backend, use pnpm always 
+
 ## Build/Lint/Test Commands
 ```bash
 # Development

@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { apiService } from '@/services/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
-export default function GitHubCallback() {
+function GitHubCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { getToken } = useAuth();
@@ -49,44 +51,32 @@ export default function GitHubCallback() {
   }, [router, searchParams, getToken]);
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <div style={{
-        textAlign: 'center',
-        padding: '2rem',
-        background: '#fff',
-        borderRadius: '12px',
-        border: '1px solid #e9ecef',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #007bff',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 1rem'
-        }} />
-        <h2 style={{ color: '#333', marginBottom: '0.5rem' }}>
-          Connecting GitHub...
-        </h2>
-        <p style={{ color: '#666', fontSize: '0.9rem' }}>
-          Please wait while we complete your GitHub connection.
-        </p>
-        
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-full max-w-md text-center p-8">
+        <CardContent className="flex flex-col items-center space-y-4 pt-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold tracking-tight">
+              Connecting GitHub...
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Please wait while we complete your GitHub connection.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+export default function GitHubCallback() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <GitHubCallbackContent />
+    </Suspense>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useUser, useAuth, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { apiService } from "@/services/api";
+import { Button } from "@/components/ui/button";
 
 export default function AuthButton() {
   const { isSignedIn, user } = useUser();
@@ -38,24 +39,21 @@ export default function AuthButton() {
     <div className="flex items-center gap-4">
       <SignedOut>
         <SignInButton mode="modal">
-          <button 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            disabled={isLoading}
-          >
+          <Button disabled={isLoading}>
             {isLoading ? "Syncing..." : "Sign In"}
-          </button>
+          </Button>
         </SignInButton>
       </SignedOut>
       
       <SignedIn>
         {isLoading && (
-          <div className="text-sm text-gray-500">
-            Syncing user...
+          <div className="text-sm text-muted-foreground">
+            Syncing...
           </div>
         )}
         
         {syncError && (
-          <div className="text-sm text-red-500">
+          <div className="text-sm text-destructive">
             {syncError}
           </div>
         )}

@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { apiService } from "@/services/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { GithubIcon } from "lucide-react";
 
 interface GitHubConnectionProps {
   onConnectionChange?: (connected: boolean, installationId?: string) => void;
@@ -33,7 +37,6 @@ export default function GitHubConnection({
       }
 
       const installUrl = await apiService.installGitHubApp(token);
-      console.log(installUrl, "installUrl");
       window.location.href = installUrl;
     } catch (error) {
       setError("Failed to start GitHub connection");
@@ -66,144 +69,87 @@ export default function GitHubConnection({
   }
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        padding: "1.5rem",
-        borderRadius: "12px",
-        border: "1px solid #e9ecef",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      }}
-    >
-      <div
-        style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}
-      >
-        <div
-          style={{
-            width: "40px",
-            height: "40px",
-            background: "#333",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginRight: "1rem",
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-          </svg>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary text-primary-foreground">
+            <GithubIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <CardTitle>GitHub Connection</CardTitle>
+            <CardDescription>
+              Connect your repositories to enable auto-documentation
+            </CardDescription>
+          </div>
         </div>
-        <div>
-          <h3
-            style={{
-              fontSize: "1.2rem",
-              fontWeight: "bold",
-              marginBottom: "0.25rem",
-            }}
-          >
-            GitHub Connection
-          </h3>
-          <p style={{ color: "#666", fontSize: "0.9rem" }}>
-            Connect your GitHub repositories to start auto-generating
-            documentation
-          </p>
-        </div>
-      </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+            {error}
+          </div>
+        )}
 
-      {error && (
-        <div
-          style={{
-            background: "#f8d7da",
-            color: "#721c24",
-            padding: "0.75rem",
-            borderRadius: "6px",
-            marginBottom: "1rem",
-            fontSize: "0.9rem",
-          }}
-        >
-          {error}
-        </div>
-      )}
+        {currentStatus && (
+          <div className={`p-4 rounded-md border ${
+            currentStatus.connected 
+              ? "bg-zinc-50 border-zinc-200" 
+              : "bg-zinc-50 border-zinc-200"
+          }`}>
+            {currentStatus.connected ? (
+              <div className="flex flex-col gap-1">
+                 <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    Connected to GitHub
+                 </div>
+                {currentStatus.installationId && (
+                  <p className="text-xs text-muted-foreground font-mono mt-1">
+                    ID: {currentStatus.installationId}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                 <span className="h-2 w-2 rounded-full bg-zinc-300" />
+                 Not connected
+              </div>
+            )}
+          </div>
+        )}
 
-      {currentStatus && (
-        <div
-          style={{
-            background: currentStatus.connected ? "#d4edda" : "#fff3cd",
-            color: currentStatus.connected ? "#155724" : "#856404",
-            padding: "0.75rem",
-            borderRadius: "6px",
-            marginBottom: "1rem",
-            fontSize: "0.9rem",
-            border: `1px solid ${currentStatus.connected ? "#c3e6cb" : "#ffeaa7"}`,
-          }}
-        >
-          {currentStatus.connected ? (
-            <div>
-              <strong>✓ GitHub Connected</strong>
-              {currentStatus.installationId && (
-                <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.8rem" }}>
-                  Installation ID: {currentStatus.installationId}
-                </p>
-              )}
-            </div>
-          ) : (
-            "GitHub not connected"
-          )}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Capabilities:</p>
+          <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1">
+            <li>Monitor repositories for merged PRs</li>
+            <li>Analyze code changes and diffs</li>
+            <li>Generate documentation automatically</li>
+            <li>Post summaries to PR comments</li>
+          </ul>
         </div>
-      )}
+      </CardContent>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <p style={{ fontSize: "0.9rem", color: "#555", lineHeight: "1.4" }}>
-          By connecting GitHub, SnapDocs will be able to:
+      <CardFooter className="flex flex-col items-start gap-4 border-t bg-zinc-50/50 pt-6">
+        <Button
+          onClick={currentStatus?.connected ? handleDisconnectGitHub : handleConnectGitHub}
+          disabled={connecting}
+          variant={currentStatus?.connected ? "destructive" : "default"}
+          className="w-full sm:w-auto"
+        >
+          {connecting 
+            ? "Processing..." 
+            : (currentStatus?.connected ? "Disconnect GitHub" : "Connect GitHub Account")
+          }
+        </Button>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Requires GitHub OAuth. You will be redirected to GitHub to authorize access.
+          We only access repositories you explicitly grant permission to.
         </p>
-        <ul
-          style={{
-            marginTop: "0.5rem",
-            paddingLeft: "1.5rem",
-            fontSize: "0.9rem",
-            color: "#555",
-          }}
-        >
-          <li>Monitor your repositories for merged pull requests</li>
-          <li>Read PR diffs and code changes</li>
-          <li>Generate comprehensive documentation</li>
-          <li>Post comments with documentation summaries</li>
-        </ul>
-      </div>
-
-      <button
-        onClick={currentStatus?.connected ? handleDisconnectGitHub : handleConnectGitHub}
-        disabled={connecting}
-        style={{
-          padding: "0.75rem 1.5rem",
-          background: connecting ? "#6c757d" : currentStatus?.connected ? "#dc3545" : "#28a745",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          cursor: connecting ? "not-allowed" : "pointer",
-          fontSize: "1rem",
-          fontWeight: "500",
-        }}
-      >
-        {connecting 
-          ? (currentStatus?.connected ? "Disconnecting..." : "Connecting...") 
-          : (currentStatus?.connected ? "Disconnect GitHub" : "Connect GitHub")
-        }
-      </button>
-
-      <p
-        style={{
-          marginTop: "1rem",
-          fontSize: "0.8rem",
-          color: "#888",
-          lineHeight: "1.4",
-        }}
-      >
-        GitHub App OAuth required. This will redirect to GitHub for
-        authorization. We&apos;ll only access repositories you explicitly grant
-        permission to.
-      </p>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
