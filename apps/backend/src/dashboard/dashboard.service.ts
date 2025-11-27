@@ -36,14 +36,14 @@ export class DashboardService {
 
   private async syncRepositoriesFromGitHub(clerkId: string) {
     const githubStatus = await this.usersService.getGitHubStatus(clerkId);
-    
+
     if (!githubStatus.connected) {
       return;
     }
 
     try {
       const repositories = await this.githubService.getInstallationRepositories(githubStatus.installationId);
-      
+
       // Get or create user
       const user = await this.usersService.findUserByClerkId(clerkId);
       if (!user) {
@@ -54,7 +54,16 @@ export class DashboardService {
       // Sync each repository to the database
       for (const repo of repositories) {
         try {
-          await this.dashboardRepository.createRepositoryFromGitHubData(clerkId, repo);
+          const syncedRepo = await this.dashboardRepository.createRepositoryFromGitHubData(clerkId, repo, githubStatus.installationId);
+          
+          // Sync pull requests for this repository
+          const pullRequests = await this.githubService.getRepositoryPullRequests(
+            repo.owner.login || repo.owner,
+            repo.name,
+            githubStatus.installationId
+          );
+          
+          await this.dashboardRepository.syncPullRequestsForRepository(syncedRepo.id, pullRequests);
         } catch (error) {
           // Ignore duplicate errors (repository already exists)
           if (error.code !== 'P2002') {

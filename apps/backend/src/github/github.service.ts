@@ -224,6 +224,49 @@ export class GitHubService {
     return data;
   }
 
+  async getRepositoryPullRequests(
+    owner: string,
+    repo: string,
+    installationId: string
+  ): Promise<any[]> {
+    try {
+      this.logger.log(`Getting pull requests for ${owner}/${repo}`);
+
+      const octokit = this.getInstallationOctokit(installationId);
+
+      const { data } = await octokit.pulls.list({
+        owner,
+        repo,
+        state: 'all',
+        per_page: 100,
+      });
+
+      const pullRequests = data || [];
+
+      this.logger.log(`Found ${pullRequests.length} pull requests for ${owner}/${repo}`);
+
+      return pullRequests.map((pr) => ({
+        id: pr.id,
+        number: pr.number,
+        title: pr.title,
+        author: pr.user.login,
+        author_id: pr.user.id,
+        state: pr.state,
+        merged_at: pr.merged_at,
+        created_at: pr.created_at,
+        updated_at: pr.updated_at,
+        html_url: pr.html_url,
+        sha: pr.head.sha,
+        ref: pr.head.ref,
+        base_ref: pr.base.ref,
+        draft: pr.draft,
+      }));
+    } catch (error) {
+      this.logger.error(`Error getting pull requests for ${owner}/${repo}`, error);
+      throw error;
+    }
+  }
+
   async getPullRequestFiles(
     owner: string,
     repo: string,

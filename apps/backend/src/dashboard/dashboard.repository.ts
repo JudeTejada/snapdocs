@@ -130,7 +130,7 @@ export class DashboardRepository {
     });
   }
 
-  async createRepositoryFromGitHubData(clerkId: string, githubRepo: any) {
+  async createRepositoryFromGitHubData(clerkId: string, githubRepo: any, installationId: string) {
     // Get user ID first
     const user = await this.prisma.user.findUnique({
       where: { clerkId },
@@ -159,7 +159,7 @@ export class DashboardRepository {
           id: existingRepo.id,
         },
         data: {
-          installId: githubRepo.owner.id.toString(),
+          installId: installationId,
           updatedAt: new Date(),
         },
       });
@@ -170,10 +170,51 @@ export class DashboardRepository {
           name,
           owner,
           userId: user.id,
-          installId: githubRepo.owner.id.toString(),
+          installId: installationId,
           provider: 'github',
         },
       });
+    }
+  }
+
+  async syncPullRequestsForRepository(repoId: string, pullRequests: any[]) {
+    for (const pr of pullRequests) {
+      try {
+        // Only sync OPEN pull requests for documentation purposes
+        if (pr.state === 'open') {
+          await this.prisma.pullRequest.upsert({
+            where: {
+              repoId_number: {
+                repoId,
+                number: pr.number,
+              },
+            },
+            update: {
+              title: pr.title,
+              author: pr.author,
+              mergedAt: new Date(0), // Open PRs don't have merged_at, use epoch
+              state: pr.state,
+              sha: pr.sha,
+              updatedAt: new Date(),
+            },
+            create: {
+              number: pr.number,
+              title: pr.title,
+              author: pr.author,
+              mergedAt: new Date(0), // Open PRs don't have merged_at, use epoch
+              state: pr.state,
+              sha: pr.sha,
+              repo: {
+                connect: {
+                  id: repoId,
+                },
+              },
+            },
+          });
+        }
+      } catch (error) {
+        console.error(`Error syncing PR ${pr.number} for repo ${repoId}:`, error);
+      }
     }
   }
 }
