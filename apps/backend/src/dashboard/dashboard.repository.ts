@@ -129,4 +129,51 @@ export class DashboardRepository {
       },
     });
   }
+
+  async createRepositoryFromGitHubData(clerkId: string, githubRepo: any) {
+    // Get user ID first
+    const user = await this.prisma.user.findUnique({
+      where: { clerkId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new Error(`User with clerkId ${clerkId} not found`);
+    }
+
+    const owner = githubRepo.owner.login || githubRepo.owner;
+    const name = githubRepo.name;
+
+    // First try to find existing repo using the unique constraint
+    const existingRepo = await this.prisma.repo.findFirst({
+      where: {
+        owner,
+        name,
+      },
+    });
+
+    if (existingRepo) {
+      // Update existing repo
+      return this.prisma.repo.update({
+        where: {
+          id: existingRepo.id,
+        },
+        data: {
+          installId: githubRepo.owner.id.toString(),
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new repo
+      return this.prisma.repo.create({
+        data: {
+          name,
+          owner,
+          userId: user.id,
+          installId: githubRepo.owner.id.toString(),
+          provider: 'github',
+        },
+      });
+    }
+  }
 }

@@ -2,14 +2,88 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as crypto from "crypto";
 import { Octokit } from "@octokit/rest";
+import { createAppAuth } from "@octokit/auth-app";
 
 @Injectable()
 export class GitHubService {
   private readonly logger = new Logger(GitHubService.name);
-  
   private readonly appUserAgent = "SnapDocs/1.0";
+  
+  // Cached app-level Octokit instance
+  private appOctokit: Octokit | null = null;
+  
+  // Cache for installation Octokit instances
+  private installationOctokitCache = new Map<string, Octokit>();
 
   constructor(private readonly configService: ConfigService) {}
+
+  /**
+   * Get an Octokit instance authenticated as the GitHub App itself
+   * Used for app-level operations (listing installations, deleting installations)
+   */
+  private getAppOctokit(): Octokit {
+    if (this.appOctokit) {
+      return this.appOctokit;
+    }
+
+    const appId = this.configService.get<string>("github.appId");
+    const privateKey = this.configService.get<string>("github.privateKey");
+
+    if (!appId || !privateKey) {
+      throw new Error("GitHub App ID or private key not configured");
+    }
+
+    // Handle private key formatting (env vars may have escaped newlines)
+    const formattedKey = privateKey.replace(/\\n/g, "\n");
+
+    this.appOctokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId,
+        privateKey: formattedKey,
+      },
+      userAgent: this.appUserAgent,
+    });
+
+    return this.appOctokit;
+  }
+
+  /**
+   * Get an Octokit instance authenticated as a specific installation
+   * Used for repository-level operations (reading PRs, posting comments)
+   * Tokens are automatically cached and refreshed by @octokit/auth-app
+   */
+  getInstallationOctokit(installationId: string): Octokit {
+    // Check cache first
+    const cached = this.installationOctokitCache.get(installationId);
+    if (cached) {
+      return cached;
+    }
+
+    const appId = this.configService.get<string>("github.appId");
+    const privateKey = this.configService.get<string>("github.privateKey");
+
+    if (!appId || !privateKey) {
+      throw new Error("GitHub App ID or private key not configured");
+    }
+
+    const formattedKey = privateKey.replace(/\\n/g, "\n");
+
+    const octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId,
+        privateKey: formattedKey,
+        installationId: Number(installationId),
+      },
+      userAgent: this.appUserAgent,
+    });
+
+    // Cache the instance
+    this.installationOctokitCache.set(installationId, octokit);
+
+    return octokit;
+  }
 
   verifyWebhookSignature(payload: string, signature: string): boolean {
     const secret = this.configService.get<string>("github.webhookSecret");
@@ -47,33 +121,24 @@ export class GitHubService {
     }
   }
 
+  /**
+   * Get an installation access token (if you need the raw token)
+   * Most of the time, use getInstallationOctokit() instead
+   */
   async getInstallationToken(installationId: string): Promise<string> {
     try {
+      const appId = this.configService.get<string>("github.appId");
       const privateKey = this.configService.get<string>("github.privateKey");
-      if (!privateKey) {
-        throw new Error("GitHub private key not configured");
-      }
+      const formattedKey = privateKey.replace(/\\n/g, "\n");
 
-      const response = await fetch(
-        `https://api.github.com/app/installations/${installationId}/access_tokens`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${privateKey}`,
-            Accept: "application/vnd.github+json",
-            "User-Agent": this.appUserAgent,
-          },
-        },
-      );
+      const auth = createAppAuth({
+        appId,
+        privateKey: formattedKey,
+        installationId: Number(installationId),
+      });
 
-      if (!response.ok) {
-        throw new Error(
-          `Failed to get installation token: ${response.statusText}`,
-        );
-      }
-
-      const data = await response.json();
-      return data.token;
+      const installationAuth = await auth({ type: "installation" });
+      return installationAuth.token;
     } catch (error) {
       this.logger.error("Error getting installation token", error);
       throw error;
@@ -84,39 +149,21 @@ export class GitHubService {
     try {
       this.logger.log(`Uninstalling GitHub App installation ${installationId}`);
 
-      const privateKey = this.configService.get<string>("github.privateKey");
-      if (!privateKey) {
-        throw new Error("GitHub private key not configured");
+      const octokit = this.getAppOctokit();
+
+      await octokit.apps.deleteInstallation({
+        installation_id: Number(installationId),
+      });
+
+      // Clear from cache
+      this.installationOctokitCache.delete(installationId);
+
+      this.logger.log(`Successfully uninstalled installation ${installationId}`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        this.logger.warn(`Installation ${installationId} not found - may already be uninstalled`);
+        return;
       }
-
-      const response = await fetch(
-        `https://api.github.com/app/installations/${installationId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${privateKey}`,
-            Accept: "application/vnd.github+json",
-            "User-Agent": this.appUserAgent,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          this.logger.warn(
-            `Installation ${installationId} not found on GitHub - may already be uninstalled`,
-          );
-          return; // Installation doesn't exist, that's fine
-        }
-        throw new Error(
-          `Failed to uninstall GitHub App: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      this.logger.log(
-        `Successfully uninstalled GitHub App installation ${installationId}`,
-      );
-    } catch (error) {
       this.logger.error("Error uninstalling GitHub App", error);
       throw error;
     }
@@ -124,46 +171,19 @@ export class GitHubService {
 
   async getInstallationRepositories(installationId: string): Promise<any[]> {
     try {
-      this.logger.log(
-        `Getting repositories for installation ${installationId}`,
-      );
+      this.logger.log(`Getting repositories for installation ${installationId}`);
 
-      const privateKey = this.configService.get<string>("github.privateKey");
-      if (!privateKey) {
-        throw new Error("GitHub private key not configured");
-      }
+      const octokit = this.getInstallationOctokit(installationId);
 
-      const response = await fetch(
-        `https://api.github.com/app/installations/${installationId}/repositories`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${privateKey}`,
-            Accept: "application/vnd.github+json",
-            "User-Agent": this.appUserAgent,
-          },
-        },
-      );
+      const { data } = await octokit.apps.listReposAccessibleToInstallation({
+        per_page: 100,
+      });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          this.logger.warn(`Installation ${installationId} not found`);
-          return [];
-        }
-        throw new Error(
-          `Failed to get repositories: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const data = await response.json();
-      console.log("data", data);
       const repositories = data.repositories || [];
 
-      this.logger.log(
-        `Found ${repositories.length} repositories for installation ${installationId}`,
-      );
+      this.logger.log(`Found ${repositories.length} repositories`);
 
-      return repositories.map((repo: any) => ({
+      return repositories.map((repo) => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
@@ -187,56 +207,39 @@ export class GitHubService {
     }
   }
 
-  createOctokitClient(token: string): Octokit {
-    return new Octokit({
-      auth: token,
-      userAgent: this.appUserAgent,
-    });
-  }
-
   async getPullRequest(
     owner: string,
     repo: string,
     pullNumber: number,
-    installationToken: string,
+    installationId: string
   ) {
-    const octokit = this.createOctokitClient(installationToken);
+    const octokit = this.getInstallationOctokit(installationId);
 
-    try {
-      const { data } = await octokit.pulls.get({
-        owner,
-        repo,
-        pull_number: pullNumber,
-      });
+    const { data } = await octokit.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber,
+    });
 
-      return data;
-    } catch (error) {
-      this.logger.error("Error fetching pull request", error);
-      throw error;
-    }
+    return data;
   }
 
   async getPullRequestFiles(
     owner: string,
     repo: string,
     pullNumber: number,
-    installationToken: string,
+    installationId: string
   ) {
-    const octokit = this.createOctokitClient(installationToken);
+    const octokit = this.getInstallationOctokit(installationId);
 
-    try {
-      const { data } = await octokit.pulls.listFiles({
-        owner,
-        repo,
-        pull_number: pullNumber,
-        per_page: 100,
-      });
+    const { data } = await octokit.pulls.listFiles({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    });
 
-      return data;
-    } catch (error) {
-      this.logger.error("Error fetching pull request files", error);
-      throw error;
-    }
+    return data;
   }
 
   async postComment(
@@ -244,23 +247,18 @@ export class GitHubService {
     repo: string,
     issueNumber: number,
     body: string,
-    installationToken: string,
+    installationId: string
   ) {
-    const octokit = this.createOctokitClient(installationToken);
+    const octokit = this.getInstallationOctokit(installationId);
 
-    try {
-      const { data } = await octokit.issues.createComment({
-        owner,
-        repo,
-        issue_number: issueNumber,
-        body,
-      });
+    const { data } = await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body,
+    });
 
-      return data;
-    } catch (error) {
-      this.logger.error("Error posting comment", error);
-      throw error;
-    }
+    return data;
   }
 
   extractPullRequestData(webhookPayload: any) {

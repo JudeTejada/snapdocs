@@ -24,12 +24,12 @@ class ApiService {
   async syncUserIfNeeded(token?: string): Promise<ApiResponse<{ user: AuthUser }>> {
     try {
       const currentUserResult = await this.getCurrentUser(token);
-      
+
       if (currentUserResult.success && currentUserResult.data?.user) {
         // User already exists, no need to sync
         return currentUserResult;
       }
-      
+
       // User doesn't exist, need to sync
       return await this.syncUser(token);
     } catch (error) {
@@ -49,7 +49,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -77,7 +77,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -105,7 +105,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -131,14 +131,14 @@ class ApiService {
       const response = await fetch(`${API_BASE_URL}/auth/github/connect`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           code: "placeholder",
-          installationId 
+          installationId
         }),
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -187,7 +187,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -215,7 +215,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -243,7 +243,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,
@@ -271,15 +271,9 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
-        return {
-          success: true,
-          data: { 
-            repositories: result.data || [], 
-            count: result.count || 0 
-          },
-        };
+      return result
       } else {
         return {
           success: false,
@@ -302,7 +296,7 @@ class ApiService {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         return {
           success: true,

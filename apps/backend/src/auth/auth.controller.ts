@@ -134,12 +134,13 @@ export class AuthController {
     const appId = this.configService.get<string>("github.appId");
     const appSlug = this.configService.get<string>("github.appSlug");
     const frontendUrl = this.configService.get<string>("frontendUrl");
+    const backendUrl = this.configService.get<string>("backendUrl") || "http://localhost:3001";
 
     if (!clientId || !appId || !appSlug || !frontendUrl) {
       throw new Error("GitHub configuration not complete");
     }
 
-    const redirectUri = `http://localhost:3001/api/v1/auth/github/callback`;
+    const redirectUri = `${backendUrl}/api/v1/auth/github/callback`;
     const installUrl = `https://github.com/apps/${appSlug}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     console.log("installUrl", installUrl);
     return res.json({ success: true, url: installUrl });
@@ -154,12 +155,14 @@ export class AuthController {
     @Res() res: Response,
   ) {
     if (!installationId) {
-      return res.redirect("http://localhost:3000/dashboard?error=no_installation");
+      const frontendUrl = this.configService.get<string>("frontendUrl");
+      return res.redirect(`${frontendUrl}/dashboard?error=no_installation`);
     }
 
     // Since we can't get Clerk user from callback, redirect to frontend with installation data
-    const frontendUrl = `http://localhost:3000/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ''}`;
-    return res.redirect(frontendUrl);
+    const frontendUrl = this.configService.get<string>("frontendUrl");
+    const redirectUrl = `${frontendUrl}/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ''}`;
+    return res.redirect(redirectUrl);
   }
 
   @Get("github/status")
