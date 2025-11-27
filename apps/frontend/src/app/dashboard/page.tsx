@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthButton from "@/components/AuthButton";
 import GitHubConnection from "@/components/GitHubConnection";
@@ -10,10 +11,14 @@ import { apiService } from "@/services/api";
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
+  const searchParams = useSearchParams();
   const [stats, setStats] = useState<any>(null);
   const [githubStatus, setGithubStatus] = useState<{ connected: boolean; installationId?: string } | null>(null);
+  const [repositories, setRepositories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [githubMessage, setGithubMessage] = useState<string | null>(null);
+  const [githubMessageType, setGithubMessageType] = useState<'success' | 'error' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -21,9 +26,10 @@ export default function Dashboard() {
         setLoading(true);
         const token = await getToken();
         
-        const [statsResponse, githubResponse] = await Promise.all([
+        const [statsResponse, githubResponse, repoResponse] = await Promise.all([
           apiService.getDashboardStats(token || undefined),
-          apiService.getGitHubStatus(token || undefined)
+          apiService.getGitHubStatus(token || undefined),
+          apiService.getGitHubRepositories(token || undefined)
         ]);
 
         if (statsResponse.success) {
@@ -35,6 +41,10 @@ export default function Dashboard() {
             connected: githubResponse.data?.connected || false,
             installationId: githubResponse.data?.installationId
           });
+        }
+
+        if (repoResponse.success) {
+          setRepositories(repoResponse.data?.repositories || []);
         }
 
         if (!statsResponse.success) {
@@ -186,6 +196,7 @@ export default function Dashboard() {
           marginBottom: '2rem'
         }}>
           <GitHubConnection 
+            currentStatus={githubStatus || { connected: false }}
             onConnectionChange={(connected, installationId) => {
               setGithubStatus({ 
                 connected, 
@@ -202,23 +213,71 @@ export default function Dashboard() {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              View Repositories
+              Connected Repositories
             </h3>
             <p style={{ color: '#666', marginBottom: '1rem' }}>
-              Check your connected repositories and their documentation status
+              Repositories with SnapDocs access
             </p>
-            <Link href="/dashboard/repos">
-              <button style={{
-                padding: '0.5rem 1rem',
-                background: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}>
-                View Repos
-              </button>
-            </Link>
+            
+            {githubStatus?.connected ? (
+              <div>
+                {loading ? (
+                  <p style={{ color: '#666', fontStyle: 'italic' }}>Loading repositories...</p>
+                ) : repositories.length > 0 ? (
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {repositories.slice(0, 3).map((repo) => (
+                      <div key={repo.id} style={{
+                        padding: '0.5rem',
+                        marginBottom: '0.5rem',
+                        background: '#f8f9fa',
+                        borderRadius: '6px',
+                        border: '1px solid #e9ecef'
+                      }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+                          {repo.full_name}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                          {repo.private ? '🔒 Private' : '🔓 Public'} • {repo.language || 'Unknown'}
+                        </div>
+                      </div>
+                    ))}
+                    {repositories.length > 3 && (
+                      <div style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', marginTop: '0.5rem' }}>
+                        +{repositories.length - 3} more repositories
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ color: '#666', fontStyle: 'italic' }}>
+                    No repositories found. Make sure to grant repository access during installation.
+                  </p>
+                )}
+                
+                <Link href="/dashboard/repos">
+                  <button style={{
+                    marginTop: '1rem',
+                    padding: '0.5rem 1rem',
+                    background: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}>
+                    View All Repos ({repositories.length})
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: '#666', fontStyle: 'italic', marginBottom: '1rem' }}>
+                  Connect your GitHub account to see repositories
+                </p>
+                <p style={{ fontSize: '0.8rem', color: '#888' }}>
+                  After connecting, grant repository access during GitHub App installation
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{

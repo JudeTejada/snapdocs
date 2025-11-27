@@ -2,12 +2,11 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { PrismaModule } from "./prisma/prisma.module";
-// import { BullmqModule } from "./bullmq/bullmq.module";
-// import { WebhooksController } from "./webhooks/webhooks.controller";
 import { GitHubService } from "./github/github.service";
 import { ClerkModule } from "./auth/clerk.module";
 import { AuthController } from "./auth/auth.controller";
 import { DashboardController } from "./dashboard/dashboard.controller";
+import { HealthModule } from "./health/health.module";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/validation";
 
@@ -25,13 +24,12 @@ import { validateEnv } from "./config/validation";
     }),
     PrismaModule,
     ClerkModule,
-    // BullmqModule,
+    HealthModule,
   ],
   controllers: [
     AppController,
     AuthController,
     DashboardController,
-    // WebhooksController
   ],
   providers: [GitHubService],
 })

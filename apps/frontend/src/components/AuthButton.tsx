@@ -16,7 +16,7 @@ export default function AuthButton() {
         try {
           setIsLoading(true);
           const token = await getToken();
-          const response = await apiService.syncUser(token || undefined);
+          const response = await apiService.syncUserIfNeeded(token || undefined);
           
           if (!response.success) {
             setSyncError(response.error || "Failed to sync user");

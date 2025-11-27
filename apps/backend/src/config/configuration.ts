@@ -1,8 +1,16 @@
 export default () => ({
   port: parseInt(process.env.PORT, 10) || 3001,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  nodeEnv: process.env.NODE_ENV || "development",
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
   database: {
     url: process.env.DATABASE_URL,
+  },
+  github: {
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    appId: process.env.GITHUB_APP_ID,
+    appSlug: process.env.GITHUB_APP_SLUG,
+    webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+    privateKey: process.env.GITHUB_PRIVATE_KEY,
   },
 });
