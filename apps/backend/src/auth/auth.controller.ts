@@ -23,12 +23,14 @@ import { GetClerkUser } from "./decorators/get-clerk-user.decorator";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConnectGitHubDto } from "./dto/auth.dto";
 import { GitHubService } from "../github/github.service";
+import { UsersService } from "../users/users.service";
 
 @ApiTags("Authentication")
 @Controller("auth")
 export class AuthController {
   constructor(
     private readonly clerkService: ClerkService,
+    private readonly usersService: UsersService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly githubService: GitHubService,
@@ -44,20 +46,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async getCurrentUser(@GetClerkUser() user: any) {
-    let dbUser = await this.prisma.user.findUnique({
-      where: { clerkId: user.clerkId },
-    });
-
-    if (!dbUser) {
-      dbUser = await this.prisma.user.create({
-        data: {
-          clerkId: user.clerkId,
-          email: user.email,
-          githubId: null,
-          tokens: {},
-        },
-      });
-    }
+    const dbUser = await this.usersService.getOrCreateUser(user.clerkId, user.email);
 
     return {
       clerkId: dbUser.clerkId,
@@ -74,18 +63,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "User synced successfully" })
   @ApiResponse({ status: 400, description: "Bad request" })
   async syncUser(@GetClerkUser() user: any) {
-    const dbUser = await this.prisma.user.upsert({
-      where: { clerkId: user.clerkId },
-      create: {
-        clerkId: user.clerkId,
-        email: user.email,
-        githubId: null,
-        tokens: {},
-      },
-      update: {
-        email: user.email,
-      },
-    });
+    const dbUser = await this.usersService.syncUser(user.clerkId, user.email);
 
     return {
       clerkId: dbUser.clerkId,
@@ -106,12 +84,7 @@ export class AuthController {
     @GetClerkUser() user: any,
     @Body() connectGitHubDto: ConnectGitHubDto,
   ) {
-    await this.prisma.user.update({
-      where: { clerkId: user.clerkId },
-      data: {
-        githubId: connectGitHubDto.installationId,
-      },
-    });
+    await this.usersService.connectGitHub(user.clerkId, connectGitHubDto.installationId);
 
     return { message: "GitHub connected successfully" };
   }
@@ -123,41 +96,24 @@ export class AuthController {
   @ApiOperation({ summary: "Disconnect GitHub account" })
   @ApiResponse({ status: 200, description: "GitHub disconnected successfully" })
   async disconnectGitHub(@GetClerkUser() user: any) {
-    // Get current user with GitHub installation ID
-    const dbUser = await this.prisma.user.findUnique({
-      where: { clerkId: user.clerkId },
-      select: { githubId: true },
-    });
+    const githubStatus = await this.usersService.getGitHubStatus(user.clerkId);
 
-    if (!dbUser?.githubId) {
-      // User is not connected to GitHub, nothing to do
+    if (!githubStatus.connected) {
       return { message: "User not connected to GitHub" };
     }
 
     try {
-      // Step 1: Uninstall GitHub App from user's account
-      await this.githubService.uninstallAppInstallation(dbUser.githubId);
+      await this.githubService.uninstallAppInstallation(githubStatus.installationId);
+      
+      await this.usersService.disconnectGitHub(user.clerkId);
 
-      // Step 2: Update our database only after successful uninstall
-      await this.prisma.user.update({
-        where: { clerkId: user.clerkId },
-        data: {
-          githubId: null,
-          // Clear any stored tokens as well
-          tokens: {},
-        },
-      });
-
-      return { 
+      return {
         message: "GitHub disconnected successfully",
-        installationId: dbUser.githubId 
+        installationId: githubStatus.installationId
       };
     } catch (error) {
       console.error("Error disconnecting GitHub:", error);
-      
-      // If uninstall failed, we should not clear our database
-      // This prevents the user from being stuck in a state where they're
-      // not connected to us but still have the app installed on GitHub
+
       return {
         error: "Failed to uninstall GitHub App",
         message: "Please try again or contact support if the issue persists"
@@ -215,17 +171,7 @@ export class AuthController {
     description: "GitHub status retrieved successfully",
   })
   async getGitHubStatus(@GetClerkUser() user: any) {
-    const dbUser = await this.prisma.user.findUnique({
-      where: { clerkId: user.clerkId },
-      select: {
-        githubId: true,
-      },
-    });
-
-    return {
-      connected: !!dbUser?.githubId,
-      installationId: dbUser?.githubId,
-    };
+    return await this.usersService.getGitHubStatus(user.clerkId);
   }
 
   @Get("github/repositories")
@@ -237,14 +183,9 @@ export class AuthController {
     description: "User repositories retrieved successfully",
   })
   async getUserRepositories(@GetClerkUser() user: any) {
-    const dbUser = await this.prisma.user.findUnique({
-      where: { clerkId: user.clerkId },
-      select: {
-        githubId: true,
-      },
-    });
+    const githubStatus = await this.usersService.getGitHubStatus(user.clerkId);
 
-    if (!dbUser?.githubId) {
+    if (!githubStatus.connected) {
       return {
         success: false,
         error: "GitHub account not connected",
@@ -252,8 +193,8 @@ export class AuthController {
     }
 
     try {
-      const repositories = await this.githubService.getInstallationRepositories(dbUser.githubId);
-      
+      const repositories = await this.githubService.getInstallationRepositories(githubStatus.installationId);
+
       return {
         success: true,
         data: repositories,

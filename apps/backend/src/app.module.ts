@@ -2,13 +2,14 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { PrismaModule } from "./prisma/prisma.module";
-import { GitHubService } from "./github/github.service";
+import { GitHubModule } from "./github/github.module";
 import { ClerkModule } from "./auth/clerk.module";
 import { AuthController } from "./auth/auth.controller";
-import { DashboardController } from "./dashboard/dashboard.controller";
 import { HealthModule } from "./health/health.module";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/validation";
+import { UsersModule } from './users/users.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -25,12 +26,14 @@ import { validateEnv } from "./config/validation";
     PrismaModule,
     ClerkModule,
     HealthModule,
+    UsersModule,
+    DashboardModule,
+    GitHubModule,
   ],
   controllers: [
     AppController,
     AuthController,
-    DashboardController,
   ],
-  providers: [GitHubService],
+  providers: [],
 })
 export class AppModule {}

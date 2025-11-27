@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Headers, HttpCode, Logger } from '@nestjs/common';
 import { GitHubService } from '../github/github.service';
 import { BullQueueService } from '../bullmq/bullmq.service';
-import { GitHubWebhookDto, WebhookResponseDto } from '../dto/github-webhook.dto';
+import { GitHubWebhookDto, WebhookResponseDto } from '../github/dto/github-webhook.dto';
 
 @Controller('webhooks')
 export class WebhooksController {
@@ -41,7 +41,7 @@ export class WebhooksController {
         this.logger.log(`Processing merged PR: ${payload.pull_request.title} (#${payload.pull_request.number})`);
 
         const extractedData = this.githubService.extractPullRequestData(payload);
-        
+
         await this.bullQueueService.addGenerateDocsJob(extractedData);
 
         return {

@@ -35,30 +35,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 
 ---
 
-### Task 1.2: Fix PrismaService to Use ConfigService
 
-**File:** `src/prisma/prisma.service.ts`
-
-**Current Issue:** Uses `process.env.DATABASE_URL` directly instead of ConfigService.
-
-**Changes Required:**
-```typescript
-@Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  constructor(private readonly configService: ConfigService) {
-    const adapter = new PrismaPg({
-      connectionString: configService.get<string>('database.url'),
-    });
-    super({ adapter });
-  }
-}
-```
-
-**Acceptance Criteria:**
-- [ ] ConfigService injected properly
-- [ ] Database connection works via config
-
----
 
 ### Task 1.3: Fix BullmqModule to Use ConfigService
 
@@ -301,7 +278,7 @@ export class OpenAiService {
 **File:** `src/ai/prompts/documentation.prompt.ts`
 
 ```typescript
-export const SYSTEM_PROMPT = `You are a senior documentation writer. 
+export const SYSTEM_PROMPT = `You are a senior documentation writer.
 Given code diffs, generate comprehensive documentation including:
 1. High-level summary (2-4 sentences)
 2. What changed and why
