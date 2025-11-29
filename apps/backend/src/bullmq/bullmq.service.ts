@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, Worker } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { SyncWorkerService } from '../workers/sync-worker.service';
+import { DocsWorkerService } from '../workers/docs-worker.service';
 
 @Injectable()
 export class BullQueueService implements OnModuleInit, OnModuleDestroy {
@@ -13,9 +14,11 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
     @InjectQueue('syncRepositories') private readonly syncRepositoriesQueue: Queue,
     private readonly configService: ConfigService,
     private readonly syncWorkerService: SyncWorkerService,
+    private readonly docsWorkerService: DocsWorkerService,
   ) {}
 
   private syncWorker: Worker | null = null;
+  private docsWorker: Worker | null = null;
 
   async onModuleInit() {
     try {
@@ -24,8 +27,9 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('✓ Successfully connected to Redis via BullMQ');
       this.logger.log(`Redis Host: ${this.configService.get('redis.host')}, Port: ${this.configService.get('redis.port')}`);
 
-      // Initialize sync worker
+      // Initialize workers
       this.initializeSyncWorker();
+      this.initializeDocsWorker();
     } catch (error) {
       this.logger.error('✗ Failed to connect to Redis', error);
       throw error;
@@ -58,16 +62,47 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private initializeDocsWorker() {
+    try {
+      this.docsWorker = new Worker('generateDocs', async (job) => {
+        return this.docsWorkerService.process(job);
+      }, {
+        connection: {
+          host: this.configService.get('redis.host'),
+          port: this.configService.get('redis.port'),
+        },
+      });
+
+      this.docsWorker.on('completed', (job) => {
+        this.logger.log(`Docs generation job ${job.id} completed successfully`);
+      });
+
+      this.docsWorker.on('failed', (job, err) => {
+        this.logger.error(`Docs generation job ${job.id} failed:`, err);
+      });
+
+      this.logger.log('✓ Docs worker initialized successfully');
+    } catch (error) {
+      this.logger.error('✗ Failed to initialize docs worker', error);
+      throw error;
+    }
+  }
+
   async onModuleDestroy() {
     try {
       await this.generateDocsQueue.close();
       await this.syncRepositoriesQueue.close();
-      
+
       if (this.syncWorker) {
         await this.syncWorker.close();
         this.logger.log('✓ Sync worker closed successfully');
       }
-      
+
+      if (this.docsWorker) {
+        await this.docsWorker.close();
+        this.logger.log('✓ Docs worker closed successfully');
+      }
+
       this.logger.log('✓ Redis connection closed successfully');
     } catch (error) {
       this.logger.error('✗ Error closing Redis connection', error);
