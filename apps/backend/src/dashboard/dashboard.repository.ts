@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { AddRepositoryDto, RepositorySummary, PRSummary, UserStats } from './dto/dashboard.dto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import {
+  AddRepositoryDto,
+  RepositorySummary,
+  PRSummary,
+  UserStats,
+} from "./dto/dashboard.dto";
 
 @Injectable()
 export class DashboardRepository {
@@ -16,7 +21,7 @@ export class DashboardRepository {
       include: {
         prs: {
           orderBy: {
-            mergedAt: 'desc',
+            mergedAt: "desc",
           },
           take: 5,
           include: {
@@ -26,7 +31,7 @@ export class DashboardRepository {
       },
     });
 
-    return repos.map(repo => ({
+    return repos.map((repo) => ({
       id: repo.id,
       name: repo.name,
       owner: repo.owner,
@@ -57,12 +62,12 @@ export class DashboardRepository {
         docs: true,
       },
       orderBy: {
-        mergedAt: 'desc',
+        mergedAt: "desc",
       },
       take: 20,
     });
 
-    return prs.map(pr => ({
+    return prs.map((pr) => ({
       id: pr.id,
       number: pr.number,
       title: pr.title,
@@ -73,8 +78,9 @@ export class DashboardRepository {
         owner: pr.repo.owner,
       },
       hasDocs: !!pr.docs,
-      docsSummary: pr.docs?.summary 
-        ? pr.docs.summary.substring(0, 200) + '...' : null,
+      docsSummary: pr.docs?.summary
+        ? pr.docs.summary.substring(0, 200) + "..."
+        : null,
     }));
   }
 
@@ -125,12 +131,16 @@ export class DashboardRepository {
         owner: addRepositoryDto.owner,
         userId: clerkId,
         installId: addRepositoryDto.installationId,
-        provider: 'github',
+        provider: "github",
       },
     });
   }
 
-  async createRepositoryFromGitHubData(clerkId: string, githubRepo: any, installationId: string) {
+  async createRepositoryFromGitHubData(
+    clerkId: string,
+    githubRepo: any,
+    installationId: string,
+  ) {
     // Get user ID first
     const user = await this.prisma.user.findUnique({
       where: { clerkId },
@@ -171,7 +181,7 @@ export class DashboardRepository {
           owner,
           userId: user.id,
           installId: installationId,
-          provider: 'github',
+          provider: "github",
         },
       });
     }
@@ -181,7 +191,7 @@ export class DashboardRepository {
     for (const pr of pullRequests) {
       try {
         // Only sync OPEN pull requests for documentation purposes
-        if (pr.state === 'open') {
+        if (pr.state === "open") {
           await this.prisma.pullRequest.upsert({
             where: {
               repoId_number: {
@@ -213,8 +223,88 @@ export class DashboardRepository {
           });
         }
       } catch (error) {
-        console.error(`Error syncing PR ${pr.number} for repo ${repoId}:`, error);
+        console.error(
+          `Error syncing PR ${pr.number} for repo ${repoId}:`,
+          error,
+        );
       }
     }
+  }
+
+  async updateUserLastSync(clerkId: string) {
+    return this.prisma.user.update({
+      where: { clerkId },
+      data: { lastSyncAt: new Date() },
+    });
+  }
+
+  async updateRepoLastSync(repoId: string) {
+    return this.prisma.repo.update({
+      where: { id: repoId },
+      data: { lastSyncAt: new Date() },
+    });
+  }
+
+  async getUserLastSync(clerkId: string): Promise<Date | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { clerkId },
+      select: { lastSyncAt: true },
+    });
+    return user?.lastSyncAt;
+  }
+
+  async getRepoLastSync(repoId: string): Promise<Date | null> {
+    const repo = await this.prisma.repo.findUnique({
+      where: { id: repoId },
+      select: { lastSyncAt: true },
+    });
+    return repo?.lastSyncAt;
+  }
+
+  async isDataStale(
+    clerkId: string,
+    staleThresholdMinutes: number = 30,
+  ): Promise<boolean> {
+    const lastSync = await this.getUserLastSync(clerkId);
+    if (!lastSync) return true;
+
+    const staleThreshold = new Date(
+      Date.now() - staleThresholdMinutes * 60 * 1000,
+    );
+    return lastSync < staleThreshold;
+  }
+
+  async deleteClosedPRs(
+    owner: string,
+    name: string,
+    numbers: number[],
+  ): Promise<void> {
+    await this.prisma.pullRequest.deleteMany({
+      where: {
+        repo: {
+          owner,
+          name,
+        },
+        number: {
+          in: numbers,
+        },
+      },
+    });
+  }
+
+  async deletePullRequest(
+    owner: string,
+    name: string,
+    prNumber: number,
+  ): Promise<void> {
+    await this.prisma.pullRequest.deleteMany({
+      where: {
+        repo: {
+          owner,
+          name,
+        },
+        number: prNumber,
+      },
+    });
   }
 }

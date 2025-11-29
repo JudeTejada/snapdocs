@@ -46,7 +46,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async getCurrentUser(@GetClerkUser() user: any) {
-    const dbUser = await this.usersService.getOrCreateUser(user.clerkId, user.email);
+    const dbUser = await this.usersService.getOrCreateUser(
+      user.clerkId,
+      user.email,
+    );
 
     return {
       clerkId: dbUser.clerkId,
@@ -84,7 +87,10 @@ export class AuthController {
     @GetClerkUser() user: any,
     @Body() connectGitHubDto: ConnectGitHubDto,
   ) {
-    await this.usersService.connectGitHub(user.clerkId, connectGitHubDto.installationId);
+    await this.usersService.connectGitHub(
+      user.clerkId,
+      connectGitHubDto.installationId,
+    );
 
     return { message: "GitHub connected successfully" };
   }
@@ -103,20 +109,22 @@ export class AuthController {
     }
 
     try {
-      await this.githubService.uninstallAppInstallation(githubStatus.installationId);
-      
+      await this.githubService.uninstallAppInstallation(
+        githubStatus.installationId,
+      );
+
       await this.usersService.disconnectGitHub(user.clerkId);
 
       return {
         message: "GitHub disconnected successfully",
-        installationId: githubStatus.installationId
+        installationId: githubStatus.installationId,
       };
     } catch (error) {
       console.error("Error disconnecting GitHub:", error);
 
       return {
         error: "Failed to uninstall GitHub App",
-        message: "Please try again or contact support if the issue persists"
+        message: "Please try again or contact support if the issue persists",
       };
     }
   }
@@ -134,7 +142,8 @@ export class AuthController {
     const appId = this.configService.get<string>("github.appId");
     const appSlug = this.configService.get<string>("github.appSlug");
     const frontendUrl = this.configService.get<string>("frontendUrl");
-    const backendUrl = this.configService.get<string>("backendUrl") || "http://localhost:3001";
+    const backendUrl =
+      this.configService.get<string>("backendUrl") || "http://localhost:3001";
 
     if (!clientId || !appId || !appSlug || !frontendUrl) {
       throw new Error("GitHub configuration not complete");
@@ -161,7 +170,7 @@ export class AuthController {
 
     // Since we can't get Clerk user from callback, redirect to frontend with installation data
     const frontendUrl = this.configService.get<string>("frontendUrl");
-    const redirectUrl = `${frontendUrl}/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ''}`;
+    const redirectUrl = `${frontendUrl}/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ""}`;
     return res.redirect(redirectUrl);
   }
 
@@ -196,7 +205,11 @@ export class AuthController {
     }
 
     try {
-      const repositories = await this.githubService.getInstallationRepositories(githubStatus.installationId);
+      const repositories = await this.githubService.getInstallationRepositories(
+        githubStatus.installationId,
+      );
+
+      console.log(repositories, "repositories");
 
       return {
         success: true,

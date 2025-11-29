@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 export interface AuthUser {
   clerkId: string;
@@ -21,7 +22,9 @@ class ApiService {
     };
   }
 
-  async syncUserIfNeeded(token?: string): Promise<ApiResponse<{ user: AuthUser }>> {
+  async syncUserIfNeeded(
+    token?: string,
+  ): Promise<ApiResponse<{ user: AuthUser }>> {
     try {
       const currentUserResult = await this.getCurrentUser(token);
 
@@ -69,7 +72,9 @@ class ApiService {
     }
   }
 
-  async getCurrentUser(token?: string): Promise<ApiResponse<{ user: AuthUser }>> {
+  async getCurrentUser(
+    token?: string,
+  ): Promise<ApiResponse<{ user: AuthUser }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -97,7 +102,9 @@ class ApiService {
     }
   }
 
-  async getGitHubStatus(token?: string): Promise<ApiResponse<{ connected: boolean; installationId?: string }>> {
+  async getGitHubStatus(
+    token?: string,
+  ): Promise<ApiResponse<{ connected: boolean; installationId?: string }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/auth/github/status`, {
@@ -120,12 +127,18 @@ class ApiService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to get GitHub status",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get GitHub status",
       };
     }
   }
 
-  async connectGitHub(installationId: string, token?: string): Promise<ApiResponse<{ message: string }>> {
+  async connectGitHub(
+    installationId: string,
+    token?: string,
+  ): Promise<ApiResponse<{ message: string }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/auth/github/connect`, {
@@ -133,7 +146,7 @@ class ApiService {
         headers,
         body: JSON.stringify({
           code: "placeholder",
-          installationId
+          installationId,
         }),
       });
 
@@ -153,7 +166,8 @@ class ApiService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to connect GitHub",
+        error:
+          error instanceof Error ? error.message : "Failed to connect GitHub",
       };
     }
   }
@@ -174,11 +188,15 @@ class ApiService {
     if (result.url) {
       return result.url;
     } else {
-      throw new Error(result.error?.message || "Failed to get GitHub installation URL");
+      throw new Error(
+        result.error?.message || "Failed to get GitHub installation URL",
+      );
     }
   }
 
-  async disconnectGitHub(token?: string): Promise<ApiResponse<{ message: string }>> {
+  async disconnectGitHub(
+    token?: string,
+  ): Promise<ApiResponse<{ message: string }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/auth/github/disconnect`, {
@@ -202,12 +220,17 @@ class ApiService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to disconnect GitHub",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to disconnect GitHub",
       };
     }
   }
 
-  async getDashboardStats(token?: string): Promise<ApiResponse<{ stats: any }>> {
+  async getDashboardStats(
+    token?: string,
+  ): Promise<ApiResponse<{ stats: any }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
@@ -230,7 +253,10 @@ class ApiService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to get dashboard stats",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get dashboard stats",
       };
     }
   }
@@ -263,7 +289,9 @@ class ApiService {
     }
   }
 
-  async getGitHubRepositories(token?: string): Promise<ApiResponse<{ repositories: any[], count: number }>> {
+  async getGitHubRepositories(
+    token?: string,
+  ): Promise<ApiResponse<{ repositories: any[]; count: number }>> {
     try {
       const headers = this.getHeaders(token);
       const response = await fetch(`${API_BASE_URL}/auth/github/repositories`, {
@@ -271,9 +299,16 @@ class ApiService {
       });
 
       const result = await response.json();
+      console.log(result, "result");
 
       if (result.success) {
-      return result
+        return {
+          success: true,
+          data: {
+            repositories: result.data?.data || [],
+            count: result.data?.count || 0,
+          },
+        };
       } else {
         return {
           success: false,
@@ -283,7 +318,10 @@ class ApiService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to get GitHub repositories",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get GitHub repositories",
       };
     }
   }
@@ -312,6 +350,67 @@ class ApiService {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to get PRs",
+      };
+    }
+  }
+
+  async getSyncStatus(
+    token?: string,
+  ): Promise<ApiResponse<{ syncStatus: any }>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(`${API_BASE_URL}/dashboard/sync-status`, {
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: { syncStatus: result.data },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to get sync status",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to get sync status",
+      };
+    }
+  }
+
+  async refreshData(token?: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(`${API_BASE_URL}/dashboard/refresh`, {
+        method: "POST",
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to refresh data",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to refresh data",
       };
     }
   }

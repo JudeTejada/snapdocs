@@ -6,8 +6,12 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
   },
+  ai: {
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiModel: process.env.GEMINI_MODEL,
+  },
   redis: {
-    host: process.env.REDIS_HOST || 'localhost',
+    host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT, 10) || 6379,
   },
   github: {

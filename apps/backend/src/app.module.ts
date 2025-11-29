@@ -10,7 +10,9 @@ import configuration from "./config/configuration";
 import { validateEnv } from "./config/validation";
 import { UsersModule } from "./users/users.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
-import { BullmqModule } from "./bullmq/bullmq.module";
+import { SyncModule } from "./sync/sync.module";
+import { TasksModule } from "./tasks/tasks.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -30,7 +32,9 @@ import { BullmqModule } from "./bullmq/bullmq.module";
     UsersModule,
     DashboardModule,
     GitHubModule,
-    BullmqModule,
+    SyncModule,
+    TasksModule,
+    WebhooksModule,
   ],
   controllers: [AppController, AuthController],
   providers: [],

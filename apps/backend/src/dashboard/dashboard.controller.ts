@@ -42,6 +42,21 @@ export class DashboardController {
     return this.dashboardService.getUserStats(user.clerkId);
   }
 
+  @Get('sync-status')
+  @ApiOperation({ summary: 'Get sync status' })
+  @ApiResponse({ status: 200, description: 'Sync status retrieved successfully' })
+  async getSyncStatus(@GetClerkUser() user: any) {
+    return this.dashboardService.getSyncStatus(user.clerkId);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Trigger data refresh' })
+  @ApiResponse({ status: 200, description: 'Refresh triggered successfully' })
+  async refreshData(@GetClerkUser() user: any) {
+    await this.dashboardService.refreshData(user.clerkId);
+    return { message: 'Data refresh triggered successfully' };
+  }
+
   @Post('repos')
   @ApiOperation({ summary: 'Add repository' })
   @ApiResponse({ status: 201, description: 'Repository added successfully' })
