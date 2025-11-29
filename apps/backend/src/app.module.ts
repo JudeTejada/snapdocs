@@ -8,8 +8,9 @@ import { AuthController } from "./auth/auth.controller";
 import { HealthModule } from "./health/health.module";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/validation";
-import { UsersModule } from './users/users.module';
-import { DashboardModule } from './dashboard/dashboard.module';
+import { UsersModule } from "./users/users.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
+import { BullmqModule } from "./bullmq/bullmq.module";
 
 @Module({
   imports: [
@@ -29,11 +30,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
     UsersModule,
     DashboardModule,
     GitHubModule,
+    BullmqModule,
   ],
-  controllers: [
-    AppController,
-    AuthController,
-  ],
+  controllers: [AppController, AuthController],
   providers: [],
 })
 export class AppModule {}

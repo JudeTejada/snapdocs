@@ -1,11 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
+import { BullQueueService } from '../bullmq/bullmq.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bullQueueService: BullQueueService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Application health check' })
@@ -17,6 +21,7 @@ export class HealthController {
       timestamp: new Date().toISOString(),
       checks: {
         database: 'unknown',
+        redis: 'unknown',
       },
     };
 
@@ -26,6 +31,15 @@ export class HealthController {
       health.checks.database = 'ok';
     } catch (error) {
       health.checks.database = 'error';
+      health.status = 'error';
+    }
+
+    try {
+      // Check Redis/BullMQ connection
+      await this.bullQueueService.getQueueStats();
+      health.checks.redis = 'ok';
+    } catch (error) {
+      health.checks.redis = 'error';
       health.status = 'error';
     }
 

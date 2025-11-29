@@ -14,6 +14,13 @@ class EnvironmentVariables {
 
   @IsString({ message: "DATABASE_URL must be a valid string" })
   DATABASE_URL: string;
+
+  @IsString({ message: "REDIS_HOST must be a valid string" })
+  REDIS_HOST: string;
+
+  @IsNumber({}, { message: "REDIS_PORT must be a valid number" })
+  @IsOptional()
+  REDIS_PORT?: number;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

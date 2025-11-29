@@ -1,14 +1,37 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class BullQueueService {
+export class BullQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BullQueueService.name);
 
   constructor(
     @InjectQueue('generateDocs') private readonly generateDocsQueue: Queue,
+    private readonly configService: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      const connection = await this.generateDocsQueue.client;
+      await connection.ping();
+      this.logger.log('✓ Successfully connected to Redis via BullMQ');
+      this.logger.log(`Redis Host: ${this.configService.get('redis.host')}, Port: ${this.configService.get('redis.port')}`);
+    } catch (error) {
+      this.logger.error('✗ Failed to connect to Redis', error);
+      throw error;
+    }
+  }
+
+  async onModuleDestroy() {
+    try {
+      await this.generateDocsQueue.close();
+      this.logger.log('✓ Redis connection closed successfully');
+    } catch (error) {
+      this.logger.error('✗ Error closing Redis connection', error);
+    }
+  }
 
   async addGenerateDocsJob(data: any) {
     this.logger.log(`Adding generateDocs job to queue for PR: ${data.pullRequest?.number}`);

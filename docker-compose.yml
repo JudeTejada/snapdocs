@@ -22,6 +22,22 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    container_name: snapdocs-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - snapdocs-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   backend:
     build:
       context: ./apps/backend
@@ -38,6 +54,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
@@ -47,6 +65,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   snapdocs-network:
