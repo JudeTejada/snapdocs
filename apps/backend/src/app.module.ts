@@ -11,7 +11,6 @@ import { validateEnv } from "./config/validation";
 import { UsersModule } from "./users/users.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { SyncModule } from "./sync/sync.module";
-import { TasksModule } from "./tasks/tasks.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 import { AiModule } from "./ai/ai.module";
 import { BullmqModule } from "./bullmq/bullmq.module";
@@ -36,7 +35,6 @@ import { WorkersModule } from "./workers/workers.module";
     DashboardModule,
     GitHubModule,
     SyncModule,
-    TasksModule,
     WebhooksModule,
     AiModule,
     BullmqModule,

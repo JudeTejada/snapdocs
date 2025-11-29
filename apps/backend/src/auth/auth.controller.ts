@@ -24,6 +24,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ConnectGitHubDto } from "./dto/auth.dto";
 import { GitHubService } from "../github/github.service";
 import { UsersService } from "../users/users.service";
+import { SyncService } from "../sync/sync.service";
+import { DashboardService } from "../dashboard/dashboard.service";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -34,6 +36,8 @@ export class AuthController {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly githubService: GitHubService,
+    private readonly syncService: SyncService,
+    private readonly dashboardService: DashboardService,
   ) {}
 
   @Get("me")
@@ -87,10 +91,17 @@ export class AuthController {
     @GetClerkUser() user: any,
     @Body() connectGitHubDto: ConnectGitHubDto,
   ) {
+    // 1. Connect GitHub account
     await this.usersService.connectGitHub(
       user.clerkId,
       connectGitHubDto.installationId,
     );
+
+    // 2. Sync repositories immediately (inline, not queued)
+    await this.syncService.syncRepositoriesFromGitHub(user.clerkId);
+
+    // 3. Also sync PRs initially (inline)
+    await this.syncService.syncPullRequestsFromGitHub(user.clerkId);
 
     return { message: "GitHub connected successfully" };
   }
@@ -204,24 +215,13 @@ export class AuthController {
       };
     }
 
-    try {
-      const repositories = await this.githubService.getInstallationRepositories(
-        githubStatus.installationId,
-      );
+    // Return cached repositories from local database (no GitHub API call)
+    const repositories = await this.dashboardService.getUserRepos(user.clerkId);
 
-      console.log(repositories, "repositories");
-
-      return {
-        success: true,
-        data: repositories,
-        count: repositories.length,
-      };
-    } catch (error) {
-      console.error("Error fetching user repositories:", error);
-      return {
-        success: false,
-        error: "Failed to fetch repositories",
-      };
-    }
+    return {
+      success: true,
+      data: repositories,
+      count: repositories.length,
+    };
   }
 }

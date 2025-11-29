@@ -13,6 +13,6 @@ import { SyncModule } from '../sync/sync.module';
   imports: [PrismaModule, UsersModule, ClerkModule, GitHubModule, BullmqModule, forwardRef(() => SyncModule)],
   providers: [DashboardRepository, DashboardService],
   controllers: [DashboardController],
-  exports: [BullmqModule, DashboardRepository],
+  exports: [BullmqModule, DashboardRepository, DashboardService],
 })
 export class DashboardModule {}

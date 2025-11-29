@@ -11,6 +11,23 @@ import {
 export class DashboardRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getUserRepos(clerkId: string): Promise<Array<{ id: string; name: string; owner: string }>> {
+    const repos = await this.prisma.repo.findMany({
+      where: {
+        user: {
+          clerkId,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        owner: true,
+      },
+    });
+
+    return repos;
+  }
+
   async findUserReposWithPRs(clerkId: string): Promise<RepositorySummary[]> {
     const repos = await this.prisma.repo.findMany({
       where: {
