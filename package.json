@@ -4,12 +4,12 @@
   "description": "SnapDocs - A full-stack application with NestJS backend and NextJS frontend",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
-    "dev:backend": "pnpm --filter backend dev",
-    "dev:frontend": "pnpm --filter frontend dev",
-    "build": "pnpm -r build",
-    "build:backend": "pnpm --filter backend build",
-    "build:frontend": "pnpm --filter frontend build",
+    "dev": "node init && concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
+    "dev:backend": "node init && pnpm --filter backend dev",
+    "dev:frontend": "node init && pnpm --filter frontend dev",
+    "build": "node init && pnpm -r build",
+    "build:backend": "node init && pnpm --filter backend build",
+    "build:frontend": "node init && pnpm --filter frontend build",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
     "typecheck": "pnpm -r typecheck"
