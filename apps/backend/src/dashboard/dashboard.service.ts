@@ -27,6 +27,26 @@ export class DashboardService {
     return this.dashboardRepository.findUserPRs(clerkId);
   }
 
+  async getUserPRsPaginated(
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    return this.dashboardRepository.findUserPRsPaginated(clerkId, page, limit, sortBy, sortOrder);
+  }
+
+  async getUserReposPaginated(
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    return this.dashboardRepository.findUserReposPaginated(clerkId, page, limit, sortBy, sortOrder);
+  }
+
   async getUserStats(clerkId: string): Promise<UserStats> {
     return this.dashboardRepository.getUserStats(clerkId);
   }
