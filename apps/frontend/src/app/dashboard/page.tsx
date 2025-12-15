@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitCommitIcon, FileTextIcon, FolderIcon, Loader2 } from "lucide-react";
+import { GitCommitIcon, FileTextIcon, FolderIcon, Loader2, Settings } from "lucide-react";
 import { stringify } from "querystring";
 
 async function DashboardContent() {
@@ -55,7 +55,15 @@ async function DashboardContent() {
             SnapDocs
           </h1>
         </Link>
-        <AuthButton />
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/settings">
+            <Button variant="ghost" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </Link>
+          <AuthButton />
+        </div>
       </header>
 
       {/* Dashboard Content */}

@@ -224,4 +224,58 @@ export class AuthController {
       count: repositories.length,
     };
   }
+
+  @Get("github/configure")
+  @UseGuards(ClerkAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get URL to configure GitHub App installation (manage repositories)" })
+  @ApiResponse({
+    status: 200,
+    description: "GitHub configuration URL retrieved successfully",
+  })
+  async getGitHubConfigureUrl(@GetClerkUser() user: any) {
+    const githubStatus = await this.usersService.getGitHubStatus(user.clerkId);
+
+    if (!githubStatus.connected) {
+      return {
+        success: false,
+        error: "GitHub not connected",
+      };
+    }
+
+    // GitHub's installation settings page where users can modify repository access
+    const configureUrl = `https://github.com/settings/installations/${githubStatus.installationId}`;
+
+    return {
+      success: true,
+      url: configureUrl,
+      installationId: githubStatus.installationId,
+    };
+  }
+
+  @Post("github/sync")
+  @UseGuards(ClerkAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Trigger repository and PR sync from GitHub" })
+  @ApiResponse({ status: 200, description: "Sync triggered successfully" })
+  async triggerSync(@GetClerkUser() user: any) {
+    const githubStatus = await this.usersService.getGitHubStatus(user.clerkId);
+
+    if (!githubStatus.connected) {
+      return {
+        success: false,
+        error: "GitHub not connected",
+      };
+    }
+
+    // Sync repositories and PRs
+    await this.syncService.syncRepositoriesFromGitHub(user.clerkId);
+    await this.syncService.syncPullRequestsFromGitHub(user.clerkId);
+
+    return {
+      success: true,
+      message: "Sync completed successfully",
+    };
+  }
 }

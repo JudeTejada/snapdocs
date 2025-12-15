@@ -1,6 +1,6 @@
 # Agent Guidelines for SnapDocs
 
-# When installing a package for both frontend and backend, use pnpm always 
+# When installing a package for both frontend and backend, use pnpm always
 
 ## Build/Lint/Test Commands
 ```bash
@@ -66,3 +66,10 @@ npm run lint:fix      # Fix linting issues
 2. Test individual apps during development
 3. Always run lint/typecheck before committing
 4. Use `npm run test:watch` for TDD on backend
+
+### Frontend Data Fetching (GLOBAL RULE)
+- **NEVER use useEffect for data fetching** - Always use server components for API calls
+- Use React Server Components (RSC) to fetch data at the component level
+- Use Suspense boundaries with skeleton UIs for progressive loading
+- For client-side mutations (e.g., form submissions, sync actions), use Server Actions with `revalidatePath`
+- Prioritize critical UI elements with early data loading; defer non-critical data with separate Suspense boundaries
