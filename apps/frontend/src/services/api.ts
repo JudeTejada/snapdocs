@@ -533,6 +533,87 @@ class ApiService {
       };
     }
   }
+
+  async getRepositoryDetail(
+    repoId: string,
+    page: number = 1,
+    limit: number = 20,
+    token?: string,
+  ): Promise<ApiResponse<RepositoryWithPRs>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(
+        `${API_BASE_URL}/dashboard/repos/${repoId}?page=${page}&limit=${limit}`,
+        { headers },
+      );
+
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: "Repository not found",
+        };
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to get repository details",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get repository details",
+      };
+    }
+  }
+}
+
+export interface RepositoryDetail {
+  id: string;
+  name: string;
+  owner: string;
+  provider: string;
+  createdAt: string;
+  lastSyncAt: string | null;
+}
+
+export interface PRListItem {
+  id: string;
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  mergedAt: string;
+  repo: {
+    name: string;
+    owner: string;
+  };
+  hasDocs: boolean;
+  docsSummary: string | null;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface RepositoryWithPRs {
+  repository: RepositoryDetail;
+  prs: PRListItem[];
+  pagination: PaginationMeta;
 }
 
 export interface PRDetail {

@@ -2,6 +2,23 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 
+interface PRSummaryMetadata {
+  repo: string;
+  prNumber: number;
+  author: string;
+  title: string;
+  fileStats?: {
+    totalFiles: number;
+    additions: number;
+    deletions: number;
+    addedCount: number;
+    modifiedCount: number;
+    deletedCount: number;
+    renamedCount: number;
+    touchedAreas: string[];
+  };
+}
+
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
@@ -108,12 +125,7 @@ OUTPUT FORMAT (Markdown):
    */
   async generatePRSummary(
     diff: string,
-    metadata: {
-      repo: string;
-      prNumber: number;
-      author: string;
-      title: string;
-    },
+    metadata: PRSummaryMetadata,
   ): Promise<PRSummaryResult> {
     const prompt = this.buildSummaryPrompt(diff, metadata);
 
@@ -139,7 +151,10 @@ OUTPUT FORMAT (Markdown):
     }
   }
 
-  private buildSummaryPrompt(diff: string, metadata: any): string {
+  private buildSummaryPrompt(
+    diff: string,
+    metadata: PRSummaryMetadata,
+  ): string {
     // Truncate diff if too large (to stay within token limits)
     const maxDiffLength = 15000;
     const truncatedDiff =
@@ -147,20 +162,31 @@ OUTPUT FORMAT (Markdown):
         ? diff.substring(0, maxDiffLength) + "\n\n[...truncated]"
         : diff;
 
+    const scopeDetails = metadata.fileStats
+      ? `
+PR SCOPE:
+- Files changed: ${metadata.fileStats.totalFiles}
+- Additions/Deletions: +${metadata.fileStats.additions} / -${metadata.fileStats.deletions}
+- Change mix: added ${metadata.fileStats.addedCount}, modified ${metadata.fileStats.modifiedCount}${metadata.fileStats.renamedCount ? `, renamed ${metadata.fileStats.renamedCount}` : ""}, deleted ${metadata.fileStats.deletedCount}
+- Areas touched: ${metadata.fileStats.touchedAreas.join(", ")}
+`.trim()
+      : "";
+
     return `
-You are a code review assistant. Analyze this PR and generate a CONCISE summary.
+You are a code review assistant. Analyze this PR and generate a concise but high-context summary that helps a reviewer understand intent, scope, and impact without reading the full diff.
 
 PR DETAILS:
 - Repository: ${metadata.repo}
 - PR #${metadata.prNumber} by @${metadata.author}
 - Title: ${metadata.title}
+${scopeDetails ? `\n${scopeDetails}\n` : ""}
 
 DIFF:
 ${truncatedDiff}
 
 OUTPUT FORMAT (respond ONLY with valid JSON, no markdown):
 {
-  "summary": "2-3 sentence overview of what this PR does and why",
+  "summary": "3-5 sentence overview of what this PR does, why it matters, and the breadth of change",
   "keyChanges": ["change 1", "change 2", "change 3"],
   "filesChanged": [{"name": "filename.ts", "changeType": "modified"}],
   "breakingChanges": false,
@@ -168,9 +194,9 @@ OUTPUT FORMAT (respond ONLY with valid JSON, no markdown):
 }
 
 RULES:
-- summary: Brief, high-level description
-- keyChanges: Up to 5 bullet points of main changes
-- filesChanged: List of files with changeType being "added", "modified", or "deleted"
+- summary: Tie together intent, user-facing/operational impact, and scope (reference the provided file counts instead of enumerating files)
+- keyChanges: Up to 3 concise bullets that add clarity beyond the summary; leave empty if redundant
+- filesChanged: Only include when you are confident; prefer an empty array over guessing
 - breakingChanges: true if there are breaking API or schema changes
 - riskLevel: "low", "medium", or "high" based on complexity and potential impact
     `.trim();
@@ -178,7 +204,7 @@ RULES:
 
   private parseSummaryResponse(
     text: string,
-    metadata: any,
+    metadata: PRSummaryMetadata,
   ): PRSummaryResult {
     try {
       // Extract JSON from response (handle markdown code blocks)
