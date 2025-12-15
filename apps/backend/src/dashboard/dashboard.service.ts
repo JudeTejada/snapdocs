@@ -51,4 +51,13 @@ export class DashboardService {
     }
     return pr;
   }
+
+  async getRepositoryWithPRs(
+    repoId: string,
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    return this.dashboardRepository.findRepositoryWithPRs(repoId, clerkId, page, limit);
+  }
 }
