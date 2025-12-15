@@ -38,7 +38,6 @@ export class SyncService {
 
       let syncedCount = 0;
       let totalPRsSynced = 0;
-      let errorCount = 0;
 
       // Sync each repository to the database
       for (const repo of repositories) {
@@ -63,7 +62,6 @@ export class SyncService {
           totalPRsSynced += pullRequests.length;
           this.logger.debug(`Successfully synced repository: ${repo.full_name} with ${pullRequests.length} PRs`);
         } catch (error) {
-          errorCount++;
           // Ignore duplicate errors (repository already exists)
           if (error.code !== 'P2002') {
             this.logger.error(`Error syncing repository ${repo.name}:`, error);
@@ -75,12 +73,10 @@ export class SyncService {
 
       // Update user last sync timestamp
       await this.dashboardRepository.updateUserLastSync(clerkId);
-
       const duration = Date.now() - startTime;
       syncLogger.logSyncComplete(clerkId, duration, syncedCount, totalPRsSynced);
       
     } catch (error) {
-      const duration = Date.now() - startTime;
       syncLogger.logSyncError(clerkId, error, 'repository-sync');
       throw error;
     }
@@ -154,7 +150,6 @@ export class SyncService {
       this.logger.log(`Found ${repositories.length} repositories for user: ${clerkId}`);
 
       let totalPRsSynced = 0;
-      let errorCount = 0;
 
       // Sync PRs for each repository
       for (const repo of repositories) {
@@ -172,7 +167,6 @@ export class SyncService {
           totalPRsSynced += pullRequests.length;
           this.logger.debug(`Successfully synced ${pullRequests.length} PRs for ${repo.owner}/${repo.name}`);
         } catch (error) {
-          errorCount++;
           this.logger.error(`Error syncing PRs for repository ${repo.name}:`, error);
         }
       }
@@ -184,7 +178,6 @@ export class SyncService {
       syncLogger.logSyncComplete(clerkId, duration, 0, totalPRsSynced);
 
     } catch (error) {
-      const duration = Date.now() - startTime;
       syncLogger.logSyncError(clerkId, error, 'pull-requests-sync');
       throw error;
     }
