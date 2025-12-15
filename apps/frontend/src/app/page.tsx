@@ -1,30 +1,11 @@
-'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AuthButton from '@/components/AuthButton';
 import { SignedIn, SignedOut } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
-  const [healthStatus, setHealthStatus] = useState<any>(null);
 
-  useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const healthResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/health`
-        );
-        const healthData = await healthResponse.json();
-        setHealthStatus(healthData);
-      } catch (error) {
-        console.error('Backend connection error:', error);
-      }
-    };
-
-    checkBackend();
-  }, []);
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -45,7 +26,7 @@ export default function Home() {
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-[600px] mx-auto leading-relaxed">
-            Transform merged pull requests into comprehensive documentation, 
+            Transform merged pull requests into comprehensive documentation,
             changelogs, and code summaries with zero manual effort.
           </p>
 
@@ -58,30 +39,10 @@ export default function Home() {
               </Link>
             </SignedIn>
             <SignedOut>
-               {/* Sign In is handled by AuthButton in header, or we can add a dedicated CTA here */}
-               <div className="text-muted-foreground text-sm">
-                 Sign in above to get started
-               </div>
+
             </SignedOut>
           </div>
 
-          {/* Status Section */}
-          <div className="pt-16">
-             {healthStatus && (
-                <Card className="w-full max-w-md mx-auto bg-zinc-50/50">
-                  <CardContent className="pt-6 text-sm text-muted-foreground space-y-2">
-                     <div className="flex justify-between">
-                        <span>System Status</span>
-                        <span className="font-medium text-foreground">{healthStatus.data.status}</span>
-                     </div>
-                     <div className="flex justify-between">
-                        <span>Uptime</span>
-                        <span className="font-mono">{Math.round(healthStatus.data.uptime)}s</span>
-                     </div>
-                  </CardContent>
-                </Card>
-             )}
-          </div>
         </div>
       </main>
     </div>

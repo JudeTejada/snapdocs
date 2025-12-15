@@ -188,30 +188,35 @@ async function DashboardContent() {
               {pullRequests.length > 0 ? (
                 <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2">
                   {pullRequests.slice(0, 3).map((pr: any, index: number) => (
-                    <div
+                    <Link
                       key={pr.id || index}
-                      className="flex items-start justify-between p-3 rounded-md bg-secondary/50 border border-border"
+                      href={`/dashboard/prs/${pr.id}`}
+                      className="block"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-background"
-                          >
-                            #{pr.number || "N/A"}
-                          </Badge>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {pr.state || "open"}
-                          </Badge>
+                      <div
+                        className="flex items-start justify-between p-3 rounded-md bg-secondary/50 border border-border hover:bg-secondary/80 hover:border-primary/20 transition-colors cursor-pointer"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-background"
+                            >
+                              #{pr.number || "N/A"}
+                            </Badge>
+                            <Badge variant="secondary" className="text-[10px]">
+                              {pr.state || "open"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm font-medium truncate mb-1">
+                            {pr.title || "Untitled PR"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {pr.repo?.name || "Unknown Repository"}
+                          </p>
                         </div>
-                        <p className="text-sm font-medium truncate mb-1">
-                          {pr.title || "Untitled PR"}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {pr.repo?.name || "Unknown Repository"}
-                        </p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                   {pullRequests.length > 3 && (
                     <p className="text-xs text-center text-muted-foreground pt-2">

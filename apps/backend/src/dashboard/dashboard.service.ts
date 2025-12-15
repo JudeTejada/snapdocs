@@ -43,4 +43,12 @@ export class DashboardService {
   async getSyncStatus(clerkId: string) {
     return this.syncService.getSyncStatus(clerkId);
   }
+
+  async getPRDetail(prId: string, clerkId: string) {
+    const pr = await this.dashboardRepository.findPullRequestById(prId, clerkId);
+    if (!pr) {
+      return null;
+    }
+    return pr;
+  }
 }

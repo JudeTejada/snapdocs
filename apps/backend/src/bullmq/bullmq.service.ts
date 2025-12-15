@@ -5,6 +5,16 @@ import { ConfigService } from '@nestjs/config';
 import { SyncWorkerService } from '../workers/sync-worker.service';
 import { DocsWorkerService } from '../workers/docs-worker.service';
 
+export interface GenerateSummaryJobData {
+  prId: string;
+  owner: string;
+  repoName: string;
+  prNumber: number;
+  prTitle: string;
+  author: string;
+  installationId: string;
+}
+
 @Injectable()
 export class BullQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BullQueueService.name);
@@ -65,6 +75,11 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
   private initializeDocsWorker() {
     try {
       this.docsWorker = new Worker('generateDocs', async (job) => {
+        // Route based on job name
+        if (job.name === 'generateSummary') {
+          return this.docsWorkerService.processSummary(job);
+        }
+        // Default to full docs generation
         return this.docsWorkerService.process(job);
       }, {
         connection: {
@@ -74,11 +89,11 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.docsWorker.on('completed', (job) => {
-        this.logger.log(`Docs generation job ${job.id} completed successfully`);
+        this.logger.log(`Docs generation job ${job.id} (${job.name}) completed successfully`);
       });
 
       this.docsWorker.on('failed', (job, err) => {
-        this.logger.error(`Docs generation job ${job.id} failed:`, err);
+        this.logger.error(`Docs generation job ${job.id} (${job.name}) failed:`, err);
       });
 
       this.logger.log('✓ Docs worker initialized successfully');
@@ -157,6 +172,31 @@ export class BullQueueService implements OnModuleInit, OnModuleDestroy {
       return job;
     } catch (error) {
       this.logger.error('Failed to add sync job to queue', error);
+      throw error;
+    }
+  }
+
+  async addGenerateSummaryJob(data: GenerateSummaryJobData) {
+    this.logger.log(`Adding generateSummary job to queue for PR #${data.prNumber} in ${data.owner}/${data.repoName}`);
+
+    try {
+      const job = await this.generateDocsQueue.add('generateSummary', {
+        ...data,
+        timestamp: new Date().toISOString(),
+      }, {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 50,
+      });
+
+      this.logger.log(`Summary job added successfully with ID: ${job.id}`);
+      return job;
+    } catch (error) {
+      this.logger.error('Failed to add summary job to queue', error);
       throw error;
     }
   }

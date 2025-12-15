@@ -27,6 +27,17 @@ interface GenerateDocsJobData {
   timestamp: string;
 }
 
+interface GenerateSummaryJobData {
+  prId: string;
+  owner: string;
+  repoName: string;
+  prNumber: number;
+  prTitle: string;
+  author: string;
+  installationId: string;
+  timestamp: string;
+}
+
 @Injectable()
 export class DocsWorkerService {
   private readonly logger = new Logger(DocsWorkerService.name);
@@ -191,5 +202,92 @@ export class DocsWorkerService {
     });
 
     return doc;
+  }
+
+  /**
+   * Process summary generation for opened PRs.
+   * Called from the generateDocs queue with job name 'generateSummary'.
+   */
+  async processSummary(job: Job<GenerateSummaryJobData>) {
+    const { prId, owner, repoName, prNumber, prTitle, author, installationId } =
+      job.data;
+    const jobId = job.id;
+    const startTime = Date.now();
+
+    this.logger.log(
+      `🔄 Processing summary generation for PR #${prNumber} in ${owner}/${repoName}, Job ID: ${jobId}`,
+    );
+
+    try {
+      // Step 1: Get the PR diff from GitHub
+      const prFiles = await this.githubService.getPullRequestFiles(
+        owner,
+        repoName,
+        prNumber,
+        installationId,
+      );
+
+      // Step 2: Convert files to diff format
+      const diff = this.formatFilesAsDiff(prFiles);
+
+      if (!diff || diff.trim().length === 0) {
+        this.logger.warn(`No diff found for PR #${prNumber}, skipping summary generation`);
+        return {
+          success: true,
+          prNumber,
+          jobId,
+          skipped: true,
+          reason: "No diff available",
+        };
+      }
+
+      // Step 3: Generate summary using Gemini
+      const summaryResult = await this.geminiService.generatePRSummary(diff, {
+        repo: `${owner}/${repoName}`,
+        prNumber,
+        title: prTitle,
+        author,
+      });
+
+      // Step 4: Save to Documentation table
+      await this.prisma.documentation.upsert({
+        where: { prId },
+        update: {
+          summary: summaryResult.summary,
+          json: summaryResult as any,
+          generatedAt: new Date(),
+        },
+        create: {
+          prId,
+          summary: summaryResult.summary,
+          json: summaryResult as any,
+          generatedAt: new Date(),
+        },
+      });
+
+      const duration = Date.now() - startTime;
+      this.logger.log(
+        `✅ Successfully generated summary for PR #${prNumber} in ${duration}ms`,
+      );
+
+      return {
+        success: true,
+        prNumber,
+        repository: `${owner}/${repoName}`,
+        jobId,
+        duration,
+        riskLevel: summaryResult.riskLevel,
+        completedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.logger.error(
+        `❌ Failed to generate summary for PR #${prNumber} after ${duration}ms`,
+        error,
+      );
+
+      // Re-throw to trigger retry logic
+      throw error;
+    }
   }
 }

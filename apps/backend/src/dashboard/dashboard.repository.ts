@@ -28,6 +28,71 @@ export class DashboardRepository {
     return repos;
   }
 
+  async findRepoByOwnerAndName(
+    owner: string,
+    name: string,
+  ): Promise<{ id: string; name: string; owner: string; installId: string } | null> {
+    const repo = await this.prisma.repo.findFirst({
+      where: {
+        owner,
+        name,
+      },
+      select: {
+        id: true,
+        name: true,
+        owner: true,
+        installId: true,
+      },
+    });
+
+    return repo;
+  }
+
+  /**
+   * Sync a single PR to the database and return the created/updated record.
+   * Used when we need the PR's database ID for subsequent operations.
+   */
+  async syncPullRequestAndReturn(
+    repoId: string,
+    prData: { number: number; title: string; author: string; state: string; sha: string },
+  ) {
+    try {
+      const pr = await this.prisma.pullRequest.upsert({
+        where: {
+          repoId_number: {
+            repoId,
+            number: prData.number,
+          },
+        },
+        update: {
+          title: prData.title,
+          author: prData.author,
+          state: prData.state,
+          sha: prData.sha,
+          updatedAt: new Date(),
+        },
+        create: {
+          number: prData.number,
+          title: prData.title,
+          author: prData.author,
+          mergedAt: new Date(0), // Open PRs don't have merged_at, use epoch
+          state: prData.state,
+          sha: prData.sha,
+          repo: {
+            connect: {
+              id: repoId,
+            },
+          },
+        },
+      });
+
+      return pr;
+    } catch (error) {
+      console.error(`Error syncing PR ${prData.number} for repo ${repoId}:`, error);
+      return null;
+    }
+  }
+
   async findUserReposWithPRs(clerkId: string): Promise<RepositorySummary[]> {
     const repos = await this.prisma.repo.findMany({
       where: {
@@ -99,6 +164,36 @@ export class DashboardRepository {
         ? pr.docs.summary.substring(0, 200) + "..."
         : null,
     }));
+  }
+
+  /**
+   * Find a single PR by ID with full details.
+   * Ensures the PR belongs to the user via clerkId.
+   */
+  async findPullRequestById(prId: string, clerkId: string) {
+    const pr = await this.prisma.pullRequest.findFirst({
+      where: {
+        id: prId,
+        repo: {
+          user: {
+            clerkId,
+          },
+        },
+      },
+      include: {
+        repo: {
+          select: {
+            id: true,
+            name: true,
+            owner: true,
+            installId: true,
+          },
+        },
+        docs: true,
+      },
+    });
+
+    return pr;
   }
 
   async getUserStats(clerkId: string): Promise<UserStats> {

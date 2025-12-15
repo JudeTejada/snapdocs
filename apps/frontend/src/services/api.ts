@@ -414,6 +414,73 @@ class ApiService {
       };
     }
   }
+
+  async getPRDetail(prId: string, token?: string): Promise<ApiResponse<PRDetail>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(`${API_BASE_URL}/dashboard/prs/${prId}`, {
+        headers,
+      });
+
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: "Pull request not found",
+        };
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to get PR details",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to get PR details",
+      };
+    }
+  }
+}
+
+export interface PRDetail {
+  id: string;
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  sha: string | null;
+  mergedAt: string;
+  repo: {
+    id: string;
+    name: string;
+    owner: string;
+    installId: string;
+  };
+  docs: {
+    id: string;
+    summary: string;
+    json: PRSummary | null;
+    generatedAt: string;
+  } | null;
+}
+
+export interface PRSummary {
+  summary: string;
+  keyChanges: string[];
+  filesChanged: Array<{ name: string; changeType: "added" | "modified" | "deleted" }>;
+  breakingChanges: boolean;
+  riskLevel: "low" | "medium" | "high";
+  generatedAt: string;
 }
 
 export const apiService = new ApiService();

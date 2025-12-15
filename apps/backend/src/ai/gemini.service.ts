@@ -101,4 +101,126 @@ OUTPUT FORMAT (Markdown):
     this.logger.error(`Gemini API error: ${error.message}`);
     throw error;
   }
+
+  /**
+   * Generate a structured PR summary for opened PRs.
+   * Returns JSON with summary, key changes, files changed, and risk level.
+   */
+  async generatePRSummary(
+    diff: string,
+    metadata: {
+      repo: string;
+      prNumber: number;
+      author: string;
+      title: string;
+    },
+  ): Promise<PRSummaryResult> {
+    const prompt = this.buildSummaryPrompt(diff, metadata);
+
+    try {
+      await this.enforceRateLimit();
+
+      const result = await this.model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+      });
+
+      const response = await result.response;
+      const text = response.text();
+
+      // Parse JSON from response
+      return this.parseSummaryResponse(text, metadata);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  private buildSummaryPrompt(diff: string, metadata: any): string {
+    // Truncate diff if too large (to stay within token limits)
+    const maxDiffLength = 15000;
+    const truncatedDiff =
+      diff.length > maxDiffLength
+        ? diff.substring(0, maxDiffLength) + "\n\n[...truncated]"
+        : diff;
+
+    return `
+You are a code review assistant. Analyze this PR and generate a CONCISE summary.
+
+PR DETAILS:
+- Repository: ${metadata.repo}
+- PR #${metadata.prNumber} by @${metadata.author}
+- Title: ${metadata.title}
+
+DIFF:
+${truncatedDiff}
+
+OUTPUT FORMAT (respond ONLY with valid JSON, no markdown):
+{
+  "summary": "2-3 sentence overview of what this PR does and why",
+  "keyChanges": ["change 1", "change 2", "change 3"],
+  "filesChanged": [{"name": "filename.ts", "changeType": "modified"}],
+  "breakingChanges": false,
+  "riskLevel": "low"
+}
+
+RULES:
+- summary: Brief, high-level description
+- keyChanges: Up to 5 bullet points of main changes
+- filesChanged: List of files with changeType being "added", "modified", or "deleted"
+- breakingChanges: true if there are breaking API or schema changes
+- riskLevel: "low", "medium", or "high" based on complexity and potential impact
+    `.trim();
+  }
+
+  private parseSummaryResponse(
+    text: string,
+    metadata: any,
+  ): PRSummaryResult {
+    try {
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonStr = text;
+      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      }
+
+      const parsed = JSON.parse(jsonStr.trim());
+
+      return {
+        summary: parsed.summary || "No summary available",
+        keyChanges: parsed.keyChanges || [],
+        filesChanged: parsed.filesChanged || [],
+        breakingChanges: parsed.breakingChanges || false,
+        riskLevel: parsed.riskLevel || "low",
+        generatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to parse JSON summary for PR #${metadata.prNumber}, using fallback`,
+      );
+
+      // Return fallback if parsing fails
+      return {
+        summary: text.substring(0, 500),
+        keyChanges: [],
+        filesChanged: [],
+        breakingChanges: false,
+        riskLevel: "low",
+        generatedAt: new Date().toISOString(),
+      };
+    }
+  }
+}
+
+export interface PRSummaryResult {
+  summary: string;
+  keyChanges: string[];
+  filesChanged: Array<{ name: string; changeType: "added" | "modified" | "deleted" }>;
+  breakingChanges: boolean;
+  riskLevel: "low" | "medium" | "high";
+  generatedAt: string;
 }
