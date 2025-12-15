@@ -326,6 +326,51 @@ export class GitHubService {
     return data;
   }
 
+  /**
+   * Create or update a PR/issue comment containing a unique marker to avoid duplicates
+   */
+  async upsertCommentWithMarker(params: {
+    owner: string;
+    repo: string;
+    issueNumber: number;
+    body: string;
+    installationId: string;
+    marker?: string;
+  }): Promise<void> {
+    const { owner, repo, issueNumber, body, installationId } = params;
+    const marker = params.marker ?? "<!-- snapdocs-summary -->";
+
+    const octokit = this.getInstallationOctokit(installationId);
+    const bodyWithMarker = `${marker}\n${body}`;
+
+    // Look for an existing comment with the marker to update instead of spamming new ones
+    const { data: comments } = await octokit.issues.listComments({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: 100,
+    });
+
+    const existing = comments.find((comment) => comment.body?.includes(marker));
+
+    if (existing) {
+      await octokit.issues.updateComment({
+        owner,
+        repo,
+        comment_id: existing.id,
+        body: bodyWithMarker,
+      });
+      return;
+    }
+
+    await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body: bodyWithMarker,
+    });
+  }
+
   extractPullRequestData(webhookPayload: any) {
     const pr = webhookPayload.pull_request;
     const repo = webhookPayload.repository;
