@@ -8,7 +8,7 @@ import {
 import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import { GetClerkUser } from '../auth/decorators/get-clerk-user.decorator';
 import { AddRepositoryDto } from './dto/dashboard.dto';
-import { PaginationQueryDto } from './dto/pagination.dto';
+import { PaginationQueryDto, PRPaginationQueryDto, RepoPaginationQueryDto } from './dto/pagination.dto';
 import { DashboardService } from './dashboard.service';
 import { UsersService } from '../users/users.service';
 
@@ -23,10 +23,19 @@ export class DashboardController {
   ) {}
 
   @Get('repos')
-  @ApiOperation({ summary: 'Get user repositories' })
+  @ApiOperation({ summary: 'Get user repositories with pagination' })
   @ApiResponse({ status: 200, description: 'Repositories retrieved successfully' })
-  async getUserRepos(@GetClerkUser() user: any) {
-    return this.dashboardService.getUserRepos(user.clerkId);
+  async getUserRepos(
+    @GetClerkUser() user: any,
+    @Query() query: RepoPaginationQueryDto,
+  ) {
+    return this.dashboardService.getUserReposPaginated(
+      user.clerkId,
+      query.page || 1,
+      query.limit || 20,
+      query.sortBy || 'createdAt',
+      query.sortOrder || 'desc',
+    );
   }
 
   @Get('repos/:id')
@@ -51,10 +60,19 @@ export class DashboardController {
   }
 
   @Get('prs')
-  @ApiOperation({ summary: 'Get user pull requests' })
+  @ApiOperation({ summary: 'Get user pull requests with pagination' })
   @ApiResponse({ status: 200, description: 'Pull requests retrieved successfully' })
-  async getUserPRs(@GetClerkUser() user: any) {
-    return this.dashboardService.getUserPRs(user.clerkId);
+  async getUserPRs(
+    @GetClerkUser() user: any,
+    @Query() query: PRPaginationQueryDto,
+  ) {
+    return this.dashboardService.getUserPRsPaginated(
+      user.clerkId,
+      query.page || 1,
+      query.limit || 20,
+      query.sortBy || 'createdAt',
+      query.sortOrder || 'desc',
+    );
   }
 
   @Get('prs/:id')
