@@ -139,6 +139,23 @@ export class WebhooksService {
 
     this.logger.log(`Processing merged PR: ${prTitle} (#${prNumber})`);
 
+    // Update PR state to "merged" in the database
+    const mergedAt = payload.pull_request.merged_at
+      ? new Date(payload.pull_request.merged_at)
+      : new Date();
+
+    await this.dashboardRepository.updatePullRequestState(
+      owner,
+      name,
+      prNumber,
+      "merged",
+      mergedAt,
+    );
+
+    this.logger.log(
+      `Updated PR #${prNumber} state to "merged" in database`,
+    );
+
     const extractedData = this.githubService.extractPullRequestData(payload);
     await this.bullQueueService.addGenerateDocsJob(extractedData);
 

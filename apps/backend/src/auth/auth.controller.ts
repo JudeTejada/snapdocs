@@ -17,10 +17,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from "@nestjs/swagger";
-import { ClerkService } from "./clerk.service";
 import { ClerkAuthGuard } from "./guards/clerk-auth.guard";
 import { GetClerkUser } from "./decorators/get-clerk-user.decorator";
-import { PrismaService } from "../prisma/prisma.service";
 import { ConnectGitHubDto } from "./dto/auth.dto";
 import { GitHubService } from "../github/github.service";
 import { UsersService } from "../users/users.service";
@@ -31,9 +29,7 @@ import { DashboardService } from "../dashboard/dashboard.service";
 @Controller("auth")
 export class AuthController {
   constructor(
-    private readonly clerkService: ClerkService,
     private readonly usersService: UsersService,
-    private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly githubService: GitHubService,
     private readonly syncService: SyncService,

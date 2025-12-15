@@ -419,4 +419,31 @@ export class DashboardRepository {
       },
     });
   }
+
+  /**
+   * Update the state of a pull request.
+   * Used when a PR is merged or closed via webhook.
+   */
+  async updatePullRequestState(
+    owner: string,
+    name: string,
+    prNumber: number,
+    state: string,
+    mergedAt?: Date,
+  ): Promise<void> {
+    await this.prisma.pullRequest.updateMany({
+      where: {
+        repo: {
+          owner,
+          name,
+        },
+        number: prNumber,
+      },
+      data: {
+        state,
+        ...(mergedAt && { mergedAt }),
+        updatedAt: new Date(),
+      },
+    });
+  }
 }

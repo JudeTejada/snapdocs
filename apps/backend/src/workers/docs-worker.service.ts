@@ -58,15 +58,7 @@ export class DocsWorkerService {
     );
 
     try {
-      // Step 1: Get the PR details from GitHub
-      const prDetails = await this.githubService.getPullRequest(
-        repository.owner,
-        repository.name,
-        pullRequest.number,
-        String(installation.id),
-      );
 
-      // Step 2: Get the PR diff
       const prFiles = await this.githubService.getPullRequestFiles(
         repository.owner,
         repository.name,

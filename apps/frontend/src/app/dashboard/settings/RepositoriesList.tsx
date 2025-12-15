@@ -61,7 +61,7 @@ export function RepositoriesList({ repositories }: RepositoriesListProps) {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <p className="text-sm">
-              No repositories found. Click "Manage Repositories on GitHub"
+              No repositories found. Click &quot;Manage Repositories on GitHub&quot;
               to add repositories.
             </p>
           </div>
@@ -69,8 +69,8 @@ export function RepositoriesList({ repositories }: RepositoriesListProps) {
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
         <p>
-          After adding or removing repositories on GitHub, click "Re-sync
-          Repositories" to update this list.
+          After adding or removing repositories on GitHub, click &quot;Re-sync
+          Repositories&quot; to update this list.
         </p>
       </CardFooter>
     </Card>
