@@ -547,4 +547,157 @@ export class DashboardRepository {
       },
     };
   }
+
+  /**
+   * Find all PRs for a user with pagination and sorting.
+   */
+  async findUserPRsPaginated(
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<{
+    prs: PRSummary[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    // Get total count
+    const total = await this.prisma.pullRequest.count({
+      where: {
+        repo: {
+          user: {
+            clerkId,
+          },
+        },
+      },
+    });
+
+    const offset = (page - 1) * limit;
+    const totalPages = Math.ceil(total / limit);
+
+    // Build orderBy dynamically based on sortBy field
+    const validSortFields = ['createdAt', 'number', 'title', 'state', 'author'];
+    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+
+    const prs = await this.prisma.pullRequest.findMany({
+      where: {
+        repo: {
+          user: {
+            clerkId,
+          },
+        },
+      },
+      include: {
+        repo: true,
+        docs: true,
+      },
+      orderBy: {
+        [orderByField]: sortOrder,
+      },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      prs: prs.map((pr) => ({
+        id: pr.id,
+        number: pr.number,
+        title: pr.title,
+        author: pr.author,
+        state: pr.state,
+        mergedAt: pr.mergedAt,
+        repo: {
+          name: pr.repo.name,
+          owner: pr.repo.owner,
+        },
+        hasDocs: !!pr.docs,
+        docsSummary: pr.docs?.summary
+          ? pr.docs.summary.substring(0, 200) + "..."
+          : null,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
+  }
+
+  /**
+   * Find all repos for a user with pagination and sorting.
+   * Includes PR count for each repo.
+   */
+  async findUserReposPaginated(
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<{
+    repos: Array<{
+      id: string;
+      name: string;
+      owner: string;
+      provider: string;
+      createdAt: Date;
+      lastSyncAt: Date | null;
+      prCount: number;
+    }>;
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    // Get total count
+    const total = await this.prisma.repo.count({
+      where: {
+        user: {
+          clerkId,
+        },
+      },
+    });
+
+    const offset = (page - 1) * limit;
+    const totalPages = Math.ceil(total / limit);
+
+    // Build orderBy dynamically
+    const validSortFields = ['createdAt', 'name', 'owner', 'lastSyncAt'];
+    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+
+    const repos = await this.prisma.repo.findMany({
+      where: {
+        user: {
+          clerkId,
+        },
+      },
+      include: {
+        _count: {
+          select: {
+            prs: true,
+          },
+        },
+      },
+      orderBy: {
+        [orderByField]: sortOrder,
+      },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      repos: repos.map((repo) => ({
+        id: repo.id,
+        name: repo.name,
+        owner: repo.owner,
+        provider: repo.provider,
+        createdAt: repo.createdAt,
+        lastSyncAt: repo.lastSyncAt,
+        prCount: repo._count.prs,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
+  }
 }
