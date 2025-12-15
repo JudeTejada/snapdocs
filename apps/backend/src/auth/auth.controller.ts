@@ -24,6 +24,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ConnectGitHubDto } from "./dto/auth.dto";
 import { GitHubService } from "../github/github.service";
 import { UsersService } from "../users/users.service";
+import { SyncService } from "../sync/sync.service";
+import { DashboardService } from "../dashboard/dashboard.service";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -34,6 +36,8 @@ export class AuthController {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly githubService: GitHubService,
+    private readonly syncService: SyncService,
+    private readonly dashboardService: DashboardService,
   ) {}
 
   @Get("me")
@@ -46,7 +50,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async getCurrentUser(@GetClerkUser() user: any) {
-    const dbUser = await this.usersService.getOrCreateUser(user.clerkId, user.email);
+    const dbUser = await this.usersService.getOrCreateUser(
+      user.clerkId,
+      user.email,
+    );
 
     return {
       clerkId: dbUser.clerkId,
@@ -84,7 +91,17 @@ export class AuthController {
     @GetClerkUser() user: any,
     @Body() connectGitHubDto: ConnectGitHubDto,
   ) {
-    await this.usersService.connectGitHub(user.clerkId, connectGitHubDto.installationId);
+    // 1. Connect GitHub account
+    await this.usersService.connectGitHub(
+      user.clerkId,
+      connectGitHubDto.installationId,
+    );
+
+    // 2. Sync repositories immediately (inline, not queued)
+    await this.syncService.syncRepositoriesFromGitHub(user.clerkId);
+
+    // 3. Also sync PRs initially (inline)
+    await this.syncService.syncPullRequestsFromGitHub(user.clerkId);
 
     return { message: "GitHub connected successfully" };
   }
@@ -103,20 +120,22 @@ export class AuthController {
     }
 
     try {
-      await this.githubService.uninstallAppInstallation(githubStatus.installationId);
-      
+      await this.githubService.uninstallAppInstallation(
+        githubStatus.installationId,
+      );
+
       await this.usersService.disconnectGitHub(user.clerkId);
 
       return {
         message: "GitHub disconnected successfully",
-        installationId: githubStatus.installationId
+        installationId: githubStatus.installationId,
       };
     } catch (error) {
       console.error("Error disconnecting GitHub:", error);
 
       return {
         error: "Failed to uninstall GitHub App",
-        message: "Please try again or contact support if the issue persists"
+        message: "Please try again or contact support if the issue persists",
       };
     }
   }
@@ -134,7 +153,8 @@ export class AuthController {
     const appId = this.configService.get<string>("github.appId");
     const appSlug = this.configService.get<string>("github.appSlug");
     const frontendUrl = this.configService.get<string>("frontendUrl");
-    const backendUrl = this.configService.get<string>("backendUrl") || "http://localhost:3001";
+    const backendUrl =
+      this.configService.get<string>("backendUrl") || "http://localhost:3001";
 
     if (!clientId || !appId || !appSlug || !frontendUrl) {
       throw new Error("GitHub configuration not complete");
@@ -161,7 +181,7 @@ export class AuthController {
 
     // Since we can't get Clerk user from callback, redirect to frontend with installation data
     const frontendUrl = this.configService.get<string>("frontendUrl");
-    const redirectUrl = `${frontendUrl}/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ''}`;
+    const redirectUrl = `${frontendUrl}/auth/github/callback?installation_id=${installationId}${state ? `&state=${state}` : ""}`;
     return res.redirect(redirectUrl);
   }
 
@@ -195,20 +215,13 @@ export class AuthController {
       };
     }
 
-    try {
-      const repositories = await this.githubService.getInstallationRepositories(githubStatus.installationId);
+    // Return cached repositories from local database (no GitHub API call)
+    const repositories = await this.dashboardService.getUserRepos(user.clerkId);
 
-      return {
-        success: true,
-        data: repositories,
-        count: repositories.length,
-      };
-    } catch (error) {
-      console.error("Error fetching user repositories:", error);
-      return {
-        success: false,
-        error: "Failed to fetch repositories",
-      };
-    }
+    return {
+      success: true,
+      data: repositories,
+      count: repositories.length,
+    };
   }
 }

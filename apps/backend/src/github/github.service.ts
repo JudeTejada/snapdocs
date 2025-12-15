@@ -8,10 +8,10 @@ import { createAppAuth } from "@octokit/auth-app";
 export class GitHubService {
   private readonly logger = new Logger(GitHubService.name);
   private readonly appUserAgent = "SnapDocs/1.0";
-  
+
   // Cached app-level Octokit instance
   private appOctokit: Octokit | null = null;
-  
+
   // Cache for installation Octokit instances
   private installationOctokitCache = new Map<string, Octokit>();
 
@@ -158,10 +158,14 @@ export class GitHubService {
       // Clear from cache
       this.installationOctokitCache.delete(installationId);
 
-      this.logger.log(`Successfully uninstalled installation ${installationId}`);
+      this.logger.log(
+        `Successfully uninstalled installation ${installationId}`,
+      );
     } catch (error: any) {
       if (error.status === 404) {
-        this.logger.warn(`Installation ${installationId} not found - may already be uninstalled`);
+        this.logger.warn(
+          `Installation ${installationId} not found - may already be uninstalled`,
+        );
         return;
       }
       this.logger.error("Error uninstalling GitHub App", error);
@@ -171,7 +175,9 @@ export class GitHubService {
 
   async getInstallationRepositories(installationId: string): Promise<any[]> {
     try {
-      this.logger.log(`Getting repositories for installation ${installationId}`);
+      this.logger.log(
+        `Getting repositories for installation ${installationId}`,
+      );
 
       const octokit = this.getInstallationOctokit(installationId);
 
@@ -207,11 +213,22 @@ export class GitHubService {
     }
   }
 
+  async getRepository(owner: string, repo: string, installationId: string) {
+    const octokit = this.getInstallationOctokit(installationId);
+
+    const { data } = await octokit.repos.get({
+      owner,
+      repo,
+    });
+
+    return data;
+  }
+
   async getPullRequest(
     owner: string,
     repo: string,
     pullNumber: number,
-    installationId: string
+    installationId: string,
   ) {
     const octokit = this.getInstallationOctokit(installationId);
 
@@ -227,7 +244,7 @@ export class GitHubService {
   async getRepositoryPullRequests(
     owner: string,
     repo: string,
-    installationId: string
+    installationId: string,
   ): Promise<any[]> {
     try {
       this.logger.log(`Getting pull requests for ${owner}/${repo}`);
@@ -237,13 +254,15 @@ export class GitHubService {
       const { data } = await octokit.pulls.list({
         owner,
         repo,
-        state: 'all',
+        state: "open",
         per_page: 100,
       });
 
       const pullRequests = data || [];
 
-      this.logger.log(`Found ${pullRequests.length} pull requests for ${owner}/${repo}`);
+      this.logger.log(
+        `Found ${pullRequests.length} pull requests for ${owner}/${repo}`,
+      );
 
       return pullRequests.map((pr) => ({
         id: pr.id,
@@ -262,7 +281,10 @@ export class GitHubService {
         draft: pr.draft,
       }));
     } catch (error) {
-      this.logger.error(`Error getting pull requests for ${owner}/${repo}`, error);
+      this.logger.error(
+        `Error getting pull requests for ${owner}/${repo}`,
+        error,
+      );
       throw error;
     }
   }
@@ -271,7 +293,7 @@ export class GitHubService {
     owner: string,
     repo: string,
     pullNumber: number,
-    installationId: string
+    installationId: string,
   ) {
     const octokit = this.getInstallationOctokit(installationId);
 
@@ -290,7 +312,7 @@ export class GitHubService {
     repo: string,
     issueNumber: number,
     body: string,
-    installationId: string
+    installationId: string,
   ) {
     const octokit = this.getInstallationOctokit(installationId);
 

@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
+import { Controller, Get, Post, Body, UseGuards, Param, NotFoundException } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
@@ -35,11 +35,38 @@ export class DashboardController {
     return this.dashboardService.getUserPRs(user.clerkId);
   }
 
+  @Get('prs/:id')
+  @ApiOperation({ summary: 'Get PR details by ID' })
+  @ApiResponse({ status: 200, description: 'PR details retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'PR not found' })
+  async getPRDetail(@GetClerkUser() user: any, @Param('id') prId: string) {
+    const pr = await this.dashboardService.getPRDetail(prId, user.clerkId);
+    if (!pr) {
+      throw new NotFoundException('Pull request not found');
+    }
+    return pr;
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get user statistics' })
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
   async getUserStats(@GetClerkUser() user: any) {
     return this.dashboardService.getUserStats(user.clerkId);
+  }
+
+  @Get('sync-status')
+  @ApiOperation({ summary: 'Get sync status' })
+  @ApiResponse({ status: 200, description: 'Sync status retrieved successfully' })
+  async getSyncStatus(@GetClerkUser() user: any) {
+    return this.dashboardService.getSyncStatus(user.clerkId);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Trigger data refresh' })
+  @ApiResponse({ status: 200, description: 'Refresh triggered successfully' })
+  async refreshData(@GetClerkUser() user: any) {
+    await this.dashboardService.refreshData(user.clerkId);
+    return { message: 'Data refresh triggered successfully' };
   }
 
   @Post('repos')
@@ -50,8 +77,8 @@ export class DashboardController {
     @Body() addRepositoryDto: AddRepositoryDto,
   ) {
     await this.usersService.getOrCreateUser(
-      user.clerkId, 
-      user.email, 
+      user.clerkId,
+      user.email,
       addRepositoryDto.installationId
     );
 

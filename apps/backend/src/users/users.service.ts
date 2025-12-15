@@ -78,4 +78,14 @@ export class UsersService {
       createdAt: user.createdAt,
     };
   }
+
+  async getAllConnectedUsers(): Promise<UserProfileResponseDto[]> {
+    const users = await this.usersRepository.findAllConnected();
+    return users.map(user => ({
+      clerkId: user.clerkId,
+      email: user.email,
+      githubId: user.githubId,
+      createdAt: user.createdAt,
+    }));
+  }
 }

@@ -10,7 +10,11 @@ import configuration from "./config/configuration";
 import { validateEnv } from "./config/validation";
 import { UsersModule } from "./users/users.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { SyncModule } from "./sync/sync.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
+import { AiModule } from "./ai/ai.module";
 import { BullmqModule } from "./bullmq/bullmq.module";
+import { WorkersModule } from "./workers/workers.module";
 
 @Module({
   imports: [
@@ -30,7 +34,11 @@ import { BullmqModule } from "./bullmq/bullmq.module";
     UsersModule,
     DashboardModule,
     GitHubModule,
+    SyncModule,
+    WebhooksModule,
+    AiModule,
     BullmqModule,
+    WorkersModule,
   ],
   controllers: [AppController, AuthController],
   providers: [],

@@ -1,32 +1,33 @@
-import { Injectable } from '@nestjs/common';
-import { DashboardRepository } from './dashboard.repository';
-import { UsersService } from '../users/users.service';
-import { GitHubService } from '../github/github.service';
-import { AddRepositoryDto, RepositorySummary, PRSummary, UserStats } from './dto/dashboard.dto';
+import { Injectable } from "@nestjs/common";
+import { DashboardRepository } from "./dashboard.repository";
+import { UsersService } from "../users/users.service";
+import {
+  AddRepositoryDto,
+  RepositorySummary,
+  PRSummary,
+  UserStats,
+} from "./dto/dashboard.dto";
+import { BullQueueService } from "../bullmq/bullmq.service";
+import { SyncService } from "../sync/sync.service";
 
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly dashboardRepository: DashboardRepository,
     private readonly usersService: UsersService,
-    private readonly githubService: GitHubService,
+    private readonly bullQueueService: BullQueueService,
+    private readonly syncService: SyncService,
   ) {}
 
   async getUserRepos(clerkId: string): Promise<RepositorySummary[]> {
-    // First sync repositories from GitHub to database
-    await this.syncRepositoriesFromGitHub(clerkId);
     return this.dashboardRepository.findUserReposWithPRs(clerkId);
   }
 
   async getUserPRs(clerkId: string): Promise<PRSummary[]> {
-    // First sync repositories from GitHub to database
-    await this.syncRepositoriesFromGitHub(clerkId);
     return this.dashboardRepository.findUserPRs(clerkId);
   }
 
   async getUserStats(clerkId: string): Promise<UserStats> {
-    // First sync repositories from GitHub to database
-    await this.syncRepositoriesFromGitHub(clerkId);
     return this.dashboardRepository.getUserStats(clerkId);
   }
 
@@ -34,45 +35,20 @@ export class DashboardService {
     return this.dashboardRepository.createRepository(clerkId, addRepositoryDto);
   }
 
-  private async syncRepositoriesFromGitHub(clerkId: string) {
-    const githubStatus = await this.usersService.getGitHubStatus(clerkId);
+  async refreshData(clerkId: string): Promise<void> {
+    // Trigger immediate background sync (PRs only)
+    await this.bullQueueService.addSyncRepositoriesJob({ clerkId });
+  }
 
-    if (!githubStatus.connected) {
-      return;
+  async getSyncStatus(clerkId: string) {
+    return this.syncService.getSyncStatus(clerkId);
+  }
+
+  async getPRDetail(prId: string, clerkId: string) {
+    const pr = await this.dashboardRepository.findPullRequestById(prId, clerkId);
+    if (!pr) {
+      return null;
     }
-
-    try {
-      const repositories = await this.githubService.getInstallationRepositories(githubStatus.installationId);
-
-      // Get or create user
-      const user = await this.usersService.findUserByClerkId(clerkId);
-      if (!user) {
-        console.log(`User with clerkId ${clerkId} not found`);
-        return;
-      }
-
-      // Sync each repository to the database
-      for (const repo of repositories) {
-        try {
-          const syncedRepo = await this.dashboardRepository.createRepositoryFromGitHubData(clerkId, repo, githubStatus.installationId);
-          
-          // Sync pull requests for this repository
-          const pullRequests = await this.githubService.getRepositoryPullRequests(
-            repo.owner.login || repo.owner,
-            repo.name,
-            githubStatus.installationId
-          );
-          
-          await this.dashboardRepository.syncPullRequestsForRepository(syncedRepo.id, pullRequests);
-        } catch (error) {
-          // Ignore duplicate errors (repository already exists)
-          if (error.code !== 'P2002') {
-            console.error(`Error syncing repository ${repo.name}:`, error);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error syncing repositories from GitHub:', error);
-    }
+    return pr;
   }
 }

@@ -20,6 +20,7 @@ model User {
   tokens    Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  lastSyncAt DateTime?
 
   accounts Account[]
   repos    Repo[]
@@ -56,6 +57,7 @@ model Repo {
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  lastSyncAt DateTime?
 
   user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   prs  PullRequest[]

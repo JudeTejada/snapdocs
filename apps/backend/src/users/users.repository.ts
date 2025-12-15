@@ -75,4 +75,20 @@ export class UsersRepository {
       },
     });
   }
+
+  async findAllConnected() {
+    return this.prisma.user.findMany({
+      where: {
+        githubId: {
+          not: null,
+        },
+      },
+      select: {
+        clerkId: true,
+        email: true,
+        githubId: true,
+        createdAt: true,
+      },
+    });
+  }
 }
