@@ -1,7 +1,6 @@
 import {
   Injectable,
   CanActivate,
-  ExecutionContext,
   Logger,
   HttpException,
   HttpStatus,
@@ -17,7 +16,7 @@ export class GeminiCostGuard implements CanActivate {
 
   constructor(private readonly configService: ConfigService) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  canActivate(): boolean {
     // Reset counter if new day
     const now = new Date();
     if (now.getDate() !== this.lastReset.getDate()) {
