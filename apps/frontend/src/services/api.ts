@@ -284,9 +284,52 @@ class ApiService {
       const result = await response.json();
 
       if (result.success) {
+        // Handle both old format (array) and new format (paginated object)
+        const reposData = result.data?.repos || result.data || [];
         return {
           success: true,
-          data: { repos: result.data },
+          data: { repos: reposData },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to get repos",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get repos",
+      };
+    }
+  }
+
+  async getUserReposPaginated(
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    token?: string,
+  ): Promise<ApiResponse<ReposWithPagination>> {
+    try {
+      const headers = this.getHeaders(token);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sortBy,
+        sortOrder,
+      });
+      const response = await fetch(
+        `${API_BASE_URL}/dashboard/repos?${params}`,
+        { headers },
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
         };
       } else {
         return {
@@ -349,9 +392,52 @@ class ApiService {
       const result = await response.json();
 
       if (result.success) {
+        // Handle both old format (array) and new format (paginated object)
+        const prsData = result.data?.prs || result.data || [];
         return {
           success: true,
-          data: { prs: result.data },
+          data: { prs: prsData },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error?.message || "Failed to get PRs",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get PRs",
+      };
+    }
+  }
+
+  async getUserPRsPaginated(
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    token?: string,
+  ): Promise<ApiResponse<PRsWithPagination>> {
+    try {
+      const headers = this.getHeaders(token);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sortBy,
+        sortOrder,
+      });
+      const response = await fetch(
+        `${API_BASE_URL}/dashboard/prs?${params}`,
+        { headers },
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
         };
       } else {
         return {
@@ -645,6 +731,26 @@ export interface PRSummary {
   breakingChanges: boolean;
   riskLevel: "low" | "medium" | "high";
   generatedAt: string;
+}
+
+export interface RepoListItem {
+  id: string;
+  name: string;
+  owner: string;
+  provider: string;
+  createdAt: string;
+  lastSyncAt: string | null;
+  prCount: number;
+}
+
+export interface ReposWithPagination {
+  repos: RepoListItem[];
+  pagination: PaginationMeta;
+}
+
+export interface PRsWithPagination {
+  prs: PRListItem[];
+  pagination: PaginationMeta;
 }
 
 export const apiService = new ApiService();
