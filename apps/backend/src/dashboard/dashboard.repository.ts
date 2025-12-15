@@ -143,9 +143,10 @@ export class DashboardRepository {
         repo: true,
         docs: true,
       },
-      orderBy: {
-        mergedAt: "desc",
-      },
+      orderBy: [
+        { state: "asc" }, // 'open' comes before 'closed', 'merged' alphabetically
+        { createdAt: "desc" },
+      ],
       take: 20,
     });
 
@@ -446,5 +447,104 @@ export class DashboardRepository {
         updatedAt: new Date(),
       },
     });
+  }
+
+  /**
+   * Find a repository by ID with paginated PRs.
+   * Ensures the repository belongs to the user via clerkId.
+   * Returns PRs sorted by state (open first) then createdAt descending.
+   */
+  async findRepositoryWithPRs(
+    repoId: string,
+    clerkId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    repository: {
+      id: string;
+      name: string;
+      owner: string;
+      provider: string;
+      createdAt: Date;
+      lastSyncAt: Date | null;
+    };
+    prs: PRSummary[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  } | null> {
+    // First verify the repository belongs to the user
+    const repo = await this.prisma.repo.findFirst({
+      where: {
+        id: repoId,
+        user: {
+          clerkId,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        owner: true,
+        provider: true,
+        createdAt: true,
+        lastSyncAt: true,
+      },
+    });
+
+    if (!repo) {
+      return null;
+    }
+
+    // Get total count for pagination
+    const total = await this.prisma.pullRequest.count({
+      where: {
+        repoId,
+      },
+    });
+
+    // Calculate offset
+    const offset = (page - 1) * limit;
+    const totalPages = Math.ceil(total / limit);
+
+    // Fetch paginated PRs with sorting
+    const prs = await this.prisma.pullRequest.findMany({
+      where: {
+        repoId,
+      },
+      include: {
+        repo: true,
+        docs: true,
+      },
+      orderBy: [
+        { state: "asc" }, // 'open' comes before 'closed', 'merged' alphabetically
+        { createdAt: "desc" },
+      ],
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      repository: repo,
+      prs: prs.map((pr) => ({
+        id: pr.id,
+        number: pr.number,
+        title: pr.title,
+        author: pr.author,
+        state: pr.state,
+        mergedAt: pr.mergedAt,
+        repo: {
+          name: pr.repo.name,
+          owner: pr.repo.owner,
+        },
+        hasDocs: !!pr.docs,
+        docsSummary: pr.docs?.summary
+          ? pr.docs.summary.substring(0, 200) + "..."
+          : null,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 }

@@ -27,7 +27,7 @@ async function DashboardContent() {
     await Promise.all([
       apiService.getDashboardStats(token || undefined),
       apiService.getGitHubStatus(token || undefined),
-      apiService.getGitHubRepositories(token || undefined),
+      apiService.getUserRepos(token || undefined),
       apiService.getUserPRs(token || undefined),
     ]);
 
@@ -39,7 +39,7 @@ async function DashboardContent() {
     : { connected: false };
 
   const repositories = repoResponse.success
-    ? repoResponse.data?.repositories || []
+    ? repoResponse.data?.repos || []
     : [];
 
   const pullRequests = prsResponse.success ? prsResponse.data?.prs || [] : [];
@@ -141,20 +141,19 @@ async function DashboardContent() {
                   {repositories.length > 0 ? (
                     <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
                       {repositories.slice(0, 3).map((repo: any) => (
-                        <div
+                        <Link
                           key={repo.id}
-                          className="flex items-center justify-between p-2 rounded-md bg-secondary/50 border border-border"
+                          href={`/dashboard/repos/${repo.id}`}
+                          className="block"
                         >
-                          <span className="text-sm font-medium truncate max-w-[150px]">
-                            {repo.name}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-background"
+                          <div
+                            className="flex items-center justify-between p-2 rounded-md bg-secondary/50 border border-border hover:bg-secondary/80 hover:border-primary/20 transition-colors cursor-pointer"
                           >
-                            {repo.private ? "Private" : "Public"}
-                          </Badge>
-                        </div>
+                            <span className="text-sm font-medium truncate max-w-[150px]">
+                              {repo.owner}/{repo.name}
+                            </span>
+                          </div>
+                        </Link>
                       ))}
                       {repositories.length > 3 && (
                         <p className="text-xs text-center text-muted-foreground pt-2">

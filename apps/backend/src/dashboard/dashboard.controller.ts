@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, Query, NotFoundException } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -8,6 +8,7 @@ import {
 import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import { GetClerkUser } from '../auth/decorators/get-clerk-user.decorator';
 import { AddRepositoryDto } from './dto/dashboard.dto';
+import { PaginationQueryDto } from './dto/pagination.dto';
 import { DashboardService } from './dashboard.service';
 import { UsersService } from '../users/users.service';
 
@@ -26,6 +27,27 @@ export class DashboardController {
   @ApiResponse({ status: 200, description: 'Repositories retrieved successfully' })
   async getUserRepos(@GetClerkUser() user: any) {
     return this.dashboardService.getUserRepos(user.clerkId);
+  }
+
+  @Get('repos/:id')
+  @ApiOperation({ summary: 'Get repository details with PRs' })
+  @ApiResponse({ status: 200, description: 'Repository retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Repository not found' })
+  async getRepositoryDetail(
+    @GetClerkUser() user: any,
+    @Param('id') repoId: string,
+    @Query() paginationQuery: PaginationQueryDto,
+  ) {
+    const result = await this.dashboardService.getRepositoryWithPRs(
+      repoId,
+      user.clerkId,
+      paginationQuery.page || 1,
+      paginationQuery.limit || 20,
+    );
+    if (!result) {
+      throw new NotFoundException('Repository not found');
+    }
+    return result;
   }
 
   @Get('prs')
