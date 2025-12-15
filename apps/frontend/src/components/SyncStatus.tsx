@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Clock, CheckCircle, AlertCircle } from 'lucide-react';
@@ -15,11 +15,7 @@ export default function SyncStatus({ getToken, onRefresh }: SyncStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
-    fetchSyncStatus();
-  }, [getToken]);
-
-  const fetchSyncStatus = async () => {
+  const fetchSyncStatus = useCallback(async () => {
     try {
       const token = getToken ? await getToken() : null;
       const response = await apiService.getSyncStatus(token || undefined);
@@ -30,7 +26,11 @@ export default function SyncStatus({ getToken, onRefresh }: SyncStatusProps) {
     } catch (error) {
       console.error('Failed to fetch sync status:', error);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    fetchSyncStatus();
+  }, [fetchSyncStatus]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

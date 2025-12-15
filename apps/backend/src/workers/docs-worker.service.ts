@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { GitHubService } from "../github/github.service";
 import { GeminiService } from "../ai/gemini.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { DocumentationService } from "../documentation/documentation.service";
 
 interface GenerateDocsJobData {
   repository: {
@@ -45,7 +45,7 @@ export class DocsWorkerService {
   constructor(
     private readonly githubService: GitHubService,
     private readonly geminiService: GeminiService,
-    private readonly prisma: PrismaService,
+    private readonly documentationService: DocumentationService,
   ) {}
 
   async process(job: Job<GenerateDocsJobData>) {
@@ -58,15 +58,7 @@ export class DocsWorkerService {
     );
 
     try {
-      // Step 1: Get the PR details from GitHub
-      const prDetails = await this.githubService.getPullRequest(
-        repository.owner,
-        repository.name,
-        pullRequest.number,
-        String(installation.id),
-      );
 
-      // Step 2: Get the PR diff
       const prFiles = await this.githubService.getPullRequestFiles(
         repository.owner,
         repository.name,
@@ -89,9 +81,16 @@ export class DocsWorkerService {
       );
 
       // Step 4: Save to database
-      const docRecord = await this.saveDocumentation({
+      const docRecord = await this.documentationService.saveDocumentationForPullRequest({
         repository,
-        pullRequest,
+        pullRequest: {
+          number: pullRequest.number,
+          title: pullRequest.title,
+          author: pullRequest.author,
+          mergedAt: pullRequest.merged_at,
+          state: pullRequest.merged ? "merged" : "closed",
+          sha: pullRequest.sha,
+        },
         documentation,
       });
 
@@ -137,71 +136,6 @@ export class DocsWorkerService {
     }
 
     return diff.trim();
-  }
-
-  private async saveDocumentation(data: {
-    repository: any;
-    pullRequest: any;
-    documentation: string;
-  }) {
-    // Find or create the repository in our database
-    let repo = await this.prisma.repo.findFirst({
-      where: {
-        owner: data.repository.owner,
-        name: data.repository.name,
-      },
-    });
-
-    if (!repo) {
-      repo = await this.prisma.repo.create({
-        data: {
-          name: data.repository.name,
-          owner: data.repository.owner,
-          installId: String(data.repository.id),
-          userId: "", // TODO: Associate with proper user
-        },
-      });
-    }
-
-    // Find or create the PR record
-    let pr = await this.prisma.pullRequest.findFirst({
-      where: {
-        repoId: repo.id,
-        number: data.pullRequest.number,
-      },
-    });
-
-    if (!pr) {
-      pr = await this.prisma.pullRequest.create({
-        data: {
-          repoId: repo.id,
-          number: data.pullRequest.number,
-          title: data.pullRequest.title,
-          author: data.pullRequest.author,
-          mergedAt: new Date(data.pullRequest.merged_at || new Date()),
-          state: "closed",
-          sha: data.pullRequest.sha,
-        },
-      });
-    }
-
-    // Create or update documentation
-    const doc = await this.prisma.documentation.upsert({
-      where: {
-        prId: pr.id,
-      },
-      update: {
-        summary: data.documentation,
-        generatedAt: new Date(),
-      },
-      create: {
-        prId: pr.id,
-        summary: data.documentation,
-        generatedAt: new Date(),
-      },
-    });
-
-    return doc;
   }
 
   /**
@@ -250,19 +184,9 @@ export class DocsWorkerService {
       });
 
       // Step 4: Save to Documentation table
-      await this.prisma.documentation.upsert({
-        where: { prId },
-        update: {
-          summary: summaryResult.summary,
-          json: summaryResult as any,
-          generatedAt: new Date(),
-        },
-        create: {
-          prId,
-          summary: summaryResult.summary,
-          json: summaryResult as any,
-          generatedAt: new Date(),
-        },
+      await this.documentationService.saveSummary(prId, {
+        summary: summaryResult.summary,
+        json: summaryResult as any,
       });
 
       const duration = Date.now() - startTime;

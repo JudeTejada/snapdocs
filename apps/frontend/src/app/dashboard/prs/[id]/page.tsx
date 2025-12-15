@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { CopySummaryButton } from "@/components/CopySummaryButton";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -190,6 +191,24 @@ async function PRDetailContent({ params }: PageProps) {
                       </div>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Documentation (for merged PRs) */}
+            {pr.docs?.summary && pr.state !== "open" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileTextIcon className="h-5 w-5" />
+                    Detailed Documentation
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive AI-generated documentation for this merged PR
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MarkdownRenderer content={pr.docs.summary} />
                 </CardContent>
               </Card>
             )}
