@@ -113,15 +113,28 @@ class ApiService {
 
       const result = await response.json();
 
-      if (result.success) {
+      // Handle both wrapped response { success, data } and direct response { connected, installationId }
+      if (result.success !== undefined) {
+        // Wrapped response
+        if (result.success) {
+          return {
+            success: true,
+            data: result.data,
+          };
+        } else {
+          return {
+            success: false,
+            error: result.error?.message || "Failed to get GitHub status",
+          };
+        }
+      } else {
+        // Direct response from backend
         return {
           success: true,
-          data: result.data,
-        };
-      } else {
-        return {
-          success: false,
-          error: result.error?.message || "Failed to get GitHub status",
+          data: {
+            connected: result.connected,
+            installationId: result.installationId,
+          },
         };
       }
     } catch (error) {
@@ -447,6 +460,76 @@ class ApiService {
         success: false,
         error:
           error instanceof Error ? error.message : "Failed to get PR details",
+      };
+    }
+  }
+
+  async getGitHubConfigureUrl(
+    token?: string,
+  ): Promise<ApiResponse<{ url: string; installationId: string }>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(`${API_BASE_URL}/auth/github/configure`, {
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: {
+            url: result.url,
+            installationId: result.installationId,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || "Failed to get GitHub configuration URL",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get GitHub configuration URL",
+      };
+    }
+  }
+
+  async triggerSync(
+    token?: string,
+  ): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const headers = this.getHeaders(token);
+      const response = await fetch(`${API_BASE_URL}/auth/github/sync`, {
+        method: "POST",
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          data: { message: result.message },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || "Failed to sync repositories",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to sync repositories",
       };
     }
   }
