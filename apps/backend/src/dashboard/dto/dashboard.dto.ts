@@ -58,6 +58,9 @@ export class PRSummary {
   author: string;
 
   @ApiProperty()
+  state: string;
+
+  @ApiProperty()
   mergedAt: Date;
 
   @ApiProperty({ type: Object })

@@ -154,6 +154,7 @@ export class DashboardRepository {
       number: pr.number,
       title: pr.title,
       author: pr.author,
+      state: pr.state,
       mergedAt: pr.mergedAt,
       repo: {
         name: pr.repo.name,
